@@ -1,0 +1,119 @@
+.import-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.import-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.import-toggles {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.import-field {
+  margin-bottom: 0;
+}
+
+.import-profiles-empty {
+  margin: 0;
+  font-size: 13px;
+}
+
+.import-profiles-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.import-textarea {
+  width: 100%;
+  min-height: 240px;
+  resize: vertical;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--txt);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: var(--mono);
+  line-height: 1.6;
+}
+
+.import-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.import-helper {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
+.import-actions {
+  margin-top: 4px;
+}
+
+.import-error {
+  border-left: 3px solid var(--danger);
+}
+
+.import-error strong {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.import-error p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--txt);
+}
+
+.import-result {
+  border-left: 3px solid var(--success);
+}
+
+.import-result h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.import-result-counts {
+  margin: 0;
+  font-size: 14px;
+  color: var(--txt);
+}
+
+.import-result-counts strong {
+  color: var(--accent);
+}
+
+.import-errors {
+  margin-top: 10px;
+}
+
+.import-errors-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.import-errors ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.import-errors li {
+  font-size: 13px;
+  color: var(--muted);
+}

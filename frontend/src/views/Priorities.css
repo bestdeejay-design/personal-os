@@ -1,0 +1,180 @@
+/* Priorities view — ranked, drag-reorderable task list.
+   Reuses the global theme variables (--bg, --panel, --panel-2, --border,
+   --text, --muted, --accent) so it follows dark/light automatically. */
+
+.prio-hint {
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.prio-saved {
+  margin-left: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 2px 10px;
+  animation: prio-fade 0.2s ease-out;
+}
+
+@keyframes prio-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.prio-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prio-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: grab;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.prio-row:hover {
+  border-color: var(--accent);
+}
+
+.prio-row.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.prio-row.drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+}
+
+.prio-handle {
+  flex: 0 0 auto;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  user-select: none;
+  cursor: grab;
+}
+
+.prio-row:hover .prio-handle {
+  color: var(--accent);
+}
+
+.prio-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prio-weight {
+  flex: 0 0 auto;
+  min-width: 28px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+.prio-chips {
+  flex: 0 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.prio-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.prio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--chip-color, var(--accent));
+  flex: 0 0 auto;
+}
+
+.prio-no-profile {
+  font-size: 13px;
+}
+
+.prio-due {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--muted);
+  min-width: 92px;
+  text-align: right;
+}
+
+.prio-score {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: right;
+}
+
+/* Responsive: collapse chips/due on narrow screens */
+@media (max-width: 640px) {
+  .prio-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .prio-title {
+    flex: 1 1 100%;
+    order: 1;
+  }
+  .prio-handle {
+    order: 0;
+  }
+  .prio-chips {
+    order: 2;
+    flex: 1 1 100%;
+  }
+  .prio-due,
+  .prio-score {
+    order: 3;
+  }
+}

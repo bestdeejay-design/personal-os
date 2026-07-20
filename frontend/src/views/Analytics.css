@@ -1,0 +1,183 @@
+/* Analytics view — scoped styles, reuses project CSS variables */
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.analytics-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.analytics-metric-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--txt);
+}
+
+.analytics-metric-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.analytics-completion {
+  gap: 10px;
+}
+
+.analytics-progress-track {
+  width: 100%;
+  height: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.analytics-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.analytics-progress-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.analytics-bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.analytics-bar-block h3,
+.analytics-per-profile h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--txt);
+}
+
+.analytics-bar-row {
+  margin-bottom: 12px;
+}
+
+.analytics-bar-row:last-child {
+  margin-bottom: 0;
+}
+
+.analytics-bar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 5px;
+}
+
+.analytics-bar-label {
+  font-size: 13px;
+  color: var(--txt);
+}
+
+.analytics-bar-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.analytics-bar-track {
+  width: 100%;
+  height: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.analytics-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+.analytics-per-profile {
+  overflow-x: auto;
+}
+
+.analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.analytics-table th,
+.analytics-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.analytics-table th {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 700;
+}
+
+.analytics-table td {
+  color: var(--txt);
+}
+
+.analytics-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.analytics-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.analytics-skeleton-card {
+  height: 84px;
+  background: linear-gradient(
+    90deg,
+    var(--panel) 25%,
+    var(--panel-2) 50%,
+    var(--panel) 75%
+  );
+  background-size: 200% 100%;
+  animation: analytics-shimmer 1.2s ease-in-out infinite;
+}
+
+.analytics-loading {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+@keyframes analytics-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .analytics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

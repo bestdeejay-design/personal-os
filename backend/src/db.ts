@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   status text DEFAULT 'backlog',
   priority text DEFAULT 'medium',
   weight int DEFAULT 0,
+  rank int NOT NULL DEFAULT 0,
   assignee text,
   due_date timestamptz NULL,
   recurrence jsonb NULL,
@@ -99,7 +100,8 @@ CREATE TABLE IF NOT EXISTS meetings (
   linked_project_id uuid NULL,
   notes_md text DEFAULT '',
   location text DEFAULT '',
-  recurrence jsonb NULL
+  recurrence jsonb NULL,
+  archived boolean DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS file_meta (
@@ -216,6 +218,14 @@ export async function migrate(): Promise<void> {
       await client.query(
         `ALTER TABLE notes ADD COLUMN IF NOT EXISTS manual_order int NOT NULL DEFAULT 0;`
       );
+      // Колонка приоритетного ранга задач (добавлена постфактум).
+      await client.query(
+        `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS rank int NOT NULL DEFAULT 0;`
+      );
+      // Колонка архивации встреч (добавлена постфактум).
+      await client.query(
+        `ALTER TABLE meetings ADD COLUMN IF NOT EXISTS archived boolean DEFAULT false;`
+      );
       // Однократный бэкапфил: старым заметкам даём порядок по created_at,
       // чтобы ручная сортировка имела смысл. Пропускаем, если уже есть
       // пользовательская сортировка (manual_order > 0 где-либо).
@@ -230,6 +240,22 @@ export async function migrate(): Promise<void> {
           )
           UPDATE notes SET manual_order = ordered.rn
           FROM ordered WHERE notes.id = ordered.id;
+        `);
+      }
+      // Однократный бэкапфил: старым задачам даём ранг по весу (по убыванию),
+      // чтобы приоритезация имела смысл. Пропускаем, если уже есть пользовательский
+      // ранг (max(rank) > 0 где-либо).
+      const { rows: rankRows } = await client.query<{ c: number; mx: number }>(
+        "SELECT COUNT(*)::int AS c, COALESCE(MAX(rank), 0) AS mx FROM tasks"
+      );
+      if (rankRows[0]?.c > 0 && rankRows[0].mx === 0) {
+        await client.query(`
+          WITH ordered AS (
+            SELECT id, ROW_NUMBER() OVER (ORDER BY weight DESC, created_at ASC) AS rn
+            FROM tasks
+          )
+          UPDATE tasks SET rank = ordered.rn
+          FROM ordered WHERE tasks.id = ordered.id;
         `);
       }
       await seedProfiles(client);

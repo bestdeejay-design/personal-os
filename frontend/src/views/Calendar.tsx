@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { Meeting, Profile, Project } from "../types";
+import type { Meeting, Profile, Project, Recurrence } from "../types";
 import {
   createMeeting,
   downloadMeetingIcs,
@@ -21,6 +21,38 @@ function toLocalInput(iso: string): string {
   )}:${pad(d.getMinutes())}`;
 }
 
+type RecurrenceRule = Exclude<Recurrence, null>;
+
+function RecurrenceControl({
+  value,
+  onChange,
+}: {
+  value: RecurrenceRule;
+  onChange: (r: RecurrenceRule) => void;
+}): JSX.Element {
+  return (
+    <div className="row">
+      <div className="field" style={{ flex: 1 }}>
+        <label>интервал</label>
+        <input
+          type="number"
+          min={1}
+          value={value.interval ?? 1}
+          onChange={(e) => onChange({ ...value, interval: Number(e.target.value) || 1 })}
+        />
+      </div>
+      <div className="field" style={{ flex: 1 }}>
+        <label>до (until)</label>
+        <input
+          type="date"
+          value={value.until ? value.until.slice(0, 10) : ""}
+          onChange={(e) => onChange({ ...value, until: e.target.value || null })}
+        />
+      </div>
+    </div>
+  );
+}
+
 function dayKey(iso: string): string {
   return iso.slice(0, 10);
 }
@@ -35,6 +67,7 @@ interface EventFormState {
   linked_project_id: string;
   notes_md: string;
   location: string;
+  recurrence: Recurrence;
 }
 
 const EMPTY_FORM: EventFormState = {
@@ -46,6 +79,7 @@ const EMPTY_FORM: EventFormState = {
   linked_project_id: "",
   notes_md: "",
   location: "",
+  recurrence: null,
 };
 
 export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.Element {
@@ -136,6 +170,7 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
         linked_project_id: form.linked_project_id || null,
         notes_md: form.notes_md,
         location: form.location || null,
+        recurrence: form.recurrence,
       });
       setForm(null);
       reload();
@@ -365,6 +400,34 @@ function EventModal({
           onChange={(e) => onChange({ ...form, location: e.target.value })}
         />
       </div>
+      <div className="field">
+        <label>Повторение</label>
+        <select
+          value={form.recurrence ? form.recurrence.freq : "none"}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "none") {
+              onChange({ ...form, recurrence: null });
+              return;
+            }
+            const freq = v as "daily" | "weekly" | "monthly" | "yearly";
+            const prev = form.recurrence ?? { freq, interval: 1, until: null };
+            onChange({ ...form, recurrence: { ...prev, freq } });
+          }}
+        >
+          <option value="none">Нет</option>
+          <option value="daily">Ежедневно</option>
+          <option value="weekly">Еженедельно</option>
+          <option value="monthly">Ежемесячно</option>
+          <option value="yearly">Ежегодно</option>
+        </select>
+      </div>
+      {form.recurrence ? (
+        <RecurrenceControl
+          value={form.recurrence}
+          onChange={(r) => onChange({ ...form, recurrence: r })}
+        />
+      ) : null}
       <div className="field">
         <label>Linked project</label>
         <select

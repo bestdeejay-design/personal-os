@@ -19,10 +19,27 @@ import { Files } from "./views/Files";
 import { Digests } from "./views/Digests";
 import { Search } from "./views/Search";
 import { AgentInbox } from "./views/AgentInbox";
+import { Priorities } from "./views/Priorities";
+import { Timeline } from "./views/Timeline";
+import { Analytics } from "./views/Analytics";
+import { Archive } from "./views/Archive";
+import { Import } from "./views/Import";
 import { useWebSocket } from "./useWebSocket";
 import { useSpeechSynthesis } from "./useSpeechSynthesis";
 
-type ViewKey = "notes" | "kanban" | "calendar" | "files" | "digests" | "search" | "inbox";
+type ViewKey =
+  | "notes"
+  | "kanban"
+  | "calendar"
+  | "files"
+  | "digests"
+  | "search"
+  | "inbox"
+  | "priorities"
+  | "timeline"
+  | "analytics"
+  | "archive"
+  | "import";
 
 const TABS: { key: ViewKey; label: string }[] = [
   { key: "notes", label: "Notes" },
@@ -32,6 +49,11 @@ const TABS: { key: ViewKey; label: string }[] = [
   { key: "digests", label: "Digests" },
   { key: "inbox", label: "Inbox" },
   { key: "search", label: "Search" },
+  { key: "priorities", label: "Priorities" },
+  { key: "timeline", label: "Timeline" },
+  { key: "analytics", label: "Analytics" },
+  { key: "archive", label: "Archive" },
+  { key: "import", label: "Import" },
 ];
 
 function AppInner(): JSX.Element {
@@ -220,6 +242,11 @@ function AppInner(): JSX.Element {
             <AgentInbox activeProfiles={activeProfiles} onUnreadChange={onInboxUnread} />
           ) : null}
           {view === "search" ? <Search /> : null}
+          {view === "priorities" ? <Priorities activeProfiles={activeProfiles} /> : null}
+          {view === "timeline" ? <Timeline activeProfiles={activeProfiles} /> : null}
+          {view === "analytics" ? <Analytics activeProfiles={activeProfiles} /> : null}
+          {view === "archive" ? <Archive activeProfiles={activeProfiles} /> : null}
+          {view === "import" ? <Import activeProfiles={activeProfiles} /> : null}
         </main>
 
         <AgentSettings open={showSettings} onClose={() => setShowSettings(false)} />

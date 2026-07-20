@@ -1,0 +1,194 @@
+/* Timeline ("Всё сразу") view — scoped classes, project CSS variables. */
+
+.tl-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- Range selector ---------- */
+.tl-range {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.tl-range-btn {
+  background: var(--panel);
+  border: none;
+  color: var(--muted);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.tl-range-btn:hover {
+  color: var(--txt);
+  background: var(--panel-2);
+}
+
+.tl-range-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.tl-range-btn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+/* ---------- Conflict banner ---------- */
+.tl-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  border: 1px solid var(--danger);
+  border-left: 4px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* ---------- Day groups ---------- */
+.tl-days {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.tl-day-head {
+  font-size: 14px;
+  margin: 0 0 8px;
+  color: var(--accent);
+  text-transform: capitalize;
+  letter-spacing: 0.2px;
+}
+
+.tl-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------- Item row ---------- */
+.tl-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  transition: border-color 0.15s ease;
+}
+
+.tl-item:hover {
+  border-color: var(--accent);
+}
+
+.tl-item.conflict {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+}
+
+.tl-icon {
+  font-size: 18px;
+  line-height: 1.4;
+  flex: none;
+}
+
+.tl-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.tl-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tl-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.tl-done {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--success);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  flex: none;
+}
+
+.tl-conflict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #fff;
+  background: var(--danger);
+  flex: none;
+}
+
+.tl-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tl-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--txt);
+}
+
+/* ---------- Profile chips ---------- */
+.tl-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--txt);
+  font-size: 11px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.tl-chip-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}

@@ -11,6 +11,14 @@ notesRouter.get("/", async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: "database unavailable" });
   const profiles = parseProfileParam(req.query.profile);
   const q = typeof req.query.q === "string" ? req.query.q : "";
+  // Семантика ?archived=: 'only' — только архивные, 'all' — все, иначе
+  // (по умолчанию) исключаем архивные. Идентично tasks/calendar.
+  const archivedCond =
+    req.query.archived === "only"
+      ? "archived = true"
+      : req.query.archived !== "all"
+        ? "archived = false"
+        : "1=1";
 
   if (q) {
     // Семантический поиск (если Ollama доступна и есть эмбеддинги).
@@ -21,7 +29,7 @@ notesRouter.get("/", async (req, res) => {
         const ids = ranked.map((r) => r.id);
         const params: unknown[] = [ids];
         let sql =
-          "SELECT * FROM notes WHERE id = ANY($1::uuid[]) AND archived = false";
+          `SELECT * FROM notes WHERE id = ANY($1::uuid[]) AND ${archivedCond}`;
         if (profiles.length > 0) {
           params.push(profiles);
           sql += " AND profile_ids ?| $2::text[]";
@@ -39,7 +47,7 @@ notesRouter.get("/", async (req, res) => {
     // ILIKE-фолбэк.
     const params: unknown[] = [`%${q}%`];
     let sql =
-      "SELECT * FROM notes WHERE archived = false AND (title ILIKE $1 OR body_md ILIKE $1)";
+      `SELECT * FROM notes WHERE ${archivedCond} AND (title ILIKE $1 OR body_md ILIKE $1)`;
     if (profiles.length > 0) {
       params.push(profiles);
       sql += " AND profile_ids ?| $2::text[]";
@@ -51,7 +59,7 @@ notesRouter.get("/", async (req, res) => {
 
   // Без q — фильтр по профилю.
   const params: unknown[] = [];
-  const conds: string[] = ["archived = false"];
+  const conds: string[] = [archivedCond];
   if (profiles.length > 0) {
     params.push(profiles);
     conds.push(`profile_ids ?| $${params.length}::text[]`);
@@ -148,4 +156,17 @@ notesRouter.put("/order", async (req, res) => {
     client.release();
   }
   res.json({ ok: true });
+});
+
+notesRouter.delete("/:id", async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: "database unavailable" });
+  const id = req.params.id;
+  const { rowCount } = await pool.query("DELETE FROM notes WHERE id = $1", [id]);
+  if (!rowCount || rowCount === 0) return res.status(404).json({ error: "not found" });
+  await pool
+    .query("DELETE FROM embeddings WHERE entity_type = 'note' AND entity_id = $1", [id])
+    .catch(() => {
+      // эмбеддинг мог отсутствовать
+    });
+  res.status(204).end();
 });

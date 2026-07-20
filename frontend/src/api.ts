@@ -1,10 +1,13 @@
 import type {
   AgentMessage,
+  Analytics,
+  Conflict,
   CreateMeetingInput,
   CreateNoteInput,
   CreateProfileInput,
   CreateTaskInput,
   FileMeta,
+  ImportResult,
   Meeting,
   Note,
   Profile,
@@ -13,6 +16,7 @@ import type {
   Setting,
   Task,
   TaskStatus,
+  TimelineItem,
   TodayDigest,
   WeekDigest,
 } from "./types";
@@ -68,8 +72,12 @@ export function createProfile(input: CreateProfileInput): Promise<Profile> {
 }
 
 // ---- Notes ----
-export function getNotes(profile?: string[], q?: string): Promise<Note[]> {
-  const query = buildQuery({ profile: profile ?? [], q });
+export function getNotes(
+  profile?: string[],
+  q?: string,
+  archived?: "false" | "all" | "only",
+): Promise<Note[]> {
+  const query = buildQuery({ profile: profile ?? [], q, archived });
   return request<Note[]>(`/api/notes${query}`);
 }
 
@@ -106,11 +114,13 @@ export function getTasks(params: {
   status?: TaskStatus;
   project?: string;
   profile?: string[];
+  archived?: "false" | "all" | "only";
 }): Promise<Task[]> {
   const query = buildQuery({
     status: params.status,
     project: params.project,
     profile: params.profile ?? [],
+    archived: params.archived,
   });
   return request<Task[]>(`/api/tasks${query}`);
 }
@@ -125,7 +135,7 @@ export function createTask(input: CreateTaskInput): Promise<Task> {
 
 export function updateTask(
   id: string,
-  patch: { status?: TaskStatus; [key: string]: unknown },
+  patch: { status?: TaskStatus; archived?: boolean; [key: string]: unknown },
 ): Promise<Task> {
   return request<Task>(`/api/tasks/${id}`, {
     method: "PATCH",
@@ -162,11 +172,13 @@ export function getCalendar(params: {
   from?: string;
   to?: string;
   profile?: string[];
+  archived?: "false" | "all" | "only";
 }): Promise<Meeting[]> {
   const query = buildQuery({
     from: params.from,
     to: params.to,
     profile: params.profile ?? [],
+    archived: params.archived,
   });
   return request<Meeting[]>(`/api/calendar${query}`);
 }
@@ -185,6 +197,80 @@ export async function downloadMeetingIcs(id: string): Promise<Blob> {
     throw new Error(`Failed to download .ics (${res.status})`);
   }
   return res.blob();
+}
+
+export function updateMeeting(id: string, patch: Record<string, unknown>): Promise<Meeting> {
+  return request<Meeting>(`/api/calendar/${id}`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteMeeting(id: string): Promise<void> {
+  return request<void>(`/api/calendar/${id}`, { method: "DELETE" });
+}
+
+// ---- Priorities ----
+export function getPriorities(profile?: string[]): Promise<Task[]> {
+  const query = buildQuery({ profile: profile ?? [] });
+  return request<Task[]>(`/api/priorities${query}`);
+}
+
+export function reorderPriorities(orderedIds: string[]): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/api/priorities/order", {
+    method: "PUT",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ orderedIds }),
+  });
+}
+
+// ---- Timeline ----
+export function getTimeline(params: {
+  from?: string;
+  to?: string;
+  profile?: string[];
+}): Promise<TimelineItem[]> {
+  const query = buildQuery({
+    from: params.from,
+    to: params.to,
+    profile: params.profile ?? [],
+  });
+  return request<TimelineItem[]>(`/api/timeline${query}`);
+}
+
+// ---- Conflicts ----
+export function getConflicts(profile?: string[]): Promise<Conflict[]> {
+  const query = buildQuery({ profile: profile ?? [] });
+  return request<Conflict[]>(`/api/conflicts${query}`);
+}
+
+// ---- Analytics ----
+export function getAnalytics(params: {
+  profile?: string[];
+  from?: string;
+  to?: string;
+}): Promise<Analytics> {
+  const query = buildQuery({
+    profile: params.profile ?? [],
+    from: params.from,
+    to: params.to,
+  });
+  return request<Analytics>(`/api/analytics${query}`);
+}
+
+// ---- Import ----
+export function importData(input: {
+  source: "text" | "json";
+  content: string;
+  target?: "notes" | "tasks";
+  profile_ids?: string[];
+}): Promise<ImportResult> {
+  return request<ImportResult>("/api/import", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(input),
+  });
 }
 
 // ---- Digests ----

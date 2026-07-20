@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Priority, Profile, Project, Task, TaskStatus } from "../types";
+import type { Priority, Profile, Project, Recurrence, Task, TaskStatus } from "../types";
 import { createTask, getProjects, getTasks, updateTask } from "../api";
 import { useData } from "../useData";
 import { useProfiles } from "../ProfilesContext";
@@ -15,6 +15,38 @@ const COLUMNS: { status: TaskStatus; label: string }[] = [
   { status: "done", label: "Done" },
 ];
 
+type RecurrenceRule = Exclude<Recurrence, null>;
+
+function RecurrenceControl({
+  value,
+  onChange,
+}: {
+  value: RecurrenceRule;
+  onChange: (r: RecurrenceRule) => void;
+}): JSX.Element {
+  return (
+    <div className="row">
+      <div className="field" style={{ flex: 1 }}>
+        <label>интервал</label>
+        <input
+          type="number"
+          min={1}
+          value={value.interval ?? 1}
+          onChange={(e) => onChange({ ...value, interval: Number(e.target.value) || 1 })}
+        />
+      </div>
+      <div className="field" style={{ flex: 1 }}>
+        <label>до (until)</label>
+        <input
+          type="date"
+          value={value.until ? value.until.slice(0, 10) : ""}
+          onChange={(e) => onChange({ ...value, until: e.target.value || null })}
+        />
+      </div>
+    </div>
+  );
+}
+
 interface TaskFormState {
   id?: string;
   title: string;
@@ -25,6 +57,7 @@ interface TaskFormState {
   due_date: string;
   project_id: string;
   profile_ids: string[];
+  recurrence: Recurrence;
 }
 
 const EMPTY_FORM: TaskFormState = {
@@ -36,6 +69,7 @@ const EMPTY_FORM: TaskFormState = {
   due_date: "",
   project_id: "",
   profile_ids: [],
+  recurrence: null,
 };
 
 export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.Element {
@@ -76,6 +110,7 @@ export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.El
       due_date: task.due_date ? task.due_date.slice(0, 10) : "",
       project_id: task.project_id ?? "",
       profile_ids: task.profile_ids,
+      recurrence: task.recurrence ?? null,
     });
 
   const submit = async (): Promise<void> => {
@@ -91,6 +126,7 @@ export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.El
         due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
         project_id: form.project_id || null,
         profile_ids: form.profile_ids,
+        recurrence: form.recurrence,
       };
       if (form.id) {
         await updateTask(form.id, payload);
@@ -283,6 +319,34 @@ function TaskModal({
           ))}
         </select>
       </div>
+      <div className="field">
+        <label>Повторение</label>
+        <select
+          value={form.recurrence ? form.recurrence.freq : "none"}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "none") {
+              onChange({ ...form, recurrence: null });
+              return;
+            }
+            const freq = v as "daily" | "weekly" | "monthly" | "yearly";
+            const prev = form.recurrence ?? { freq, interval: 1, until: null };
+            onChange({ ...form, recurrence: { ...prev, freq } });
+          }}
+        >
+          <option value="none">Нет</option>
+          <option value="daily">Ежедневно</option>
+          <option value="weekly">Еженедельно</option>
+          <option value="monthly">Ежемесячно</option>
+          <option value="yearly">Ежегодно</option>
+        </select>
+      </div>
+      {form.recurrence ? (
+        <RecurrenceControl
+          value={form.recurrence}
+          onChange={(r) => onChange({ ...form, recurrence: r })}
+        />
+      ) : null}
       <div className="field">
         <label>Profiles</label>
         <ProfileChips

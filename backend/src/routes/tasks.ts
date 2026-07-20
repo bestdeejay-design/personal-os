@@ -11,8 +11,12 @@ tasksRouter.get("/", async (req, res) => {
   const status = typeof req.query.status === "string" ? req.query.status : "";
   const project = typeof req.query.project === "string" ? req.query.project : "";
   const profiles = parseProfileParam(req.query.profile);
-  const conds: string[] = ["archived = false"];
+  const conds: string[] = [];
   const params: unknown[] = [];
+  // Семантика ?archived=: 'only' — только архивные, 'all' — все, иначе (по
+  // умолчанию) исключаем архивные.
+  if (req.query.archived === "only") conds.push("archived = true");
+  else if (req.query.archived !== "all") conds.push("archived = false");
   if (status) {
     params.push(status);
     conds.push(`status = $${params.length}`);
@@ -38,8 +42,8 @@ tasksRouter.post("/", async (req, res) => {
   if (!body.title) return res.status(400).json({ error: "title required" });
   const id = randomUUID();
   const { rows } = await pool.query<TaskRow>(
-    `INSERT INTO tasks (id, title, desc_md, status, priority, weight, assignee, due_date, recurrence, project_id, profile_ids)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11::jsonb) RETURNING *`,
+    `INSERT INTO tasks (id, title, desc_md, status, priority, weight, rank, assignee, due_date, recurrence, project_id, profile_ids)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb) RETURNING *`,
     [
       id,
       body.title,
@@ -47,6 +51,7 @@ tasksRouter.post("/", async (req, res) => {
       body.status ?? "backlog",
       body.priority ?? "medium",
       body.weight ?? 0,
+      body.rank ?? 0,
       body.assignee ?? null,
       body.due_date || null,
       body.recurrence === undefined || body.recurrence === null ? null : jb(body.recurrence),
@@ -74,7 +79,9 @@ tasksRouter.patch("/:id", async (req, res) => {
   if (body.status !== undefined) add("status", body.status);
   if (body.priority !== undefined) add("priority", body.priority);
   if (body.weight !== undefined) add("weight", body.weight);
+  if (body.rank !== undefined) add("rank", body.rank);
   if (body.assignee !== undefined) add("assignee", body.assignee);
+  if (body.archived !== undefined) add("archived", body.archived);
   if (body.due_date !== undefined) add("due_date", body.due_date || null);
   if (body.recurrence !== undefined) {
     params.push(body.recurrence === null ? null : jb(body.recurrence));

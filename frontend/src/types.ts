@@ -8,6 +8,52 @@ export interface Profile {
   is_default: boolean;
 }
 
+export type Recurrence =
+  | {
+      freq: "daily" | "weekly" | "monthly" | "yearly";
+      interval?: number;
+      until?: string | null;
+    }
+  | null;
+
+export interface TimelineItem {
+  id: string;
+  type: "meeting" | "task" | "note";
+  title: string;
+  start: string; // ISO
+  end?: string; // ISO, meetings only
+  profile_ids: string[];
+  done?: boolean; // tasks
+  ref_id?: string;
+}
+
+export interface Conflict {
+  id: string;
+  kind: "time";
+  reason: string;
+  items: TimelineItem[];
+  profiles: string[];
+}
+
+export interface Analytics {
+  tasks_total: number;
+  tasks_by_status: Record<string, number>;
+  tasks_by_priority: Record<string, number>;
+  tasks_overdue: number;
+  tasks_done: number;
+  completion_rate: number; // 0..1
+  notes_total: number;
+  meetings_total: number;
+  files_total: number;
+  per_profile?: Record<string, { tasks: number; notes: number; meetings: number }>;
+}
+
+export interface ImportResult {
+  notes: number;
+  tasks: number;
+  errors?: string[];
+}
+
 export interface Note {
   id: string;
   title: string;
@@ -20,7 +66,7 @@ export interface Note {
   linked_meeting_id?: string | null;
   linked_project_id?: string | null;
   linked_task_id?: string | null;
-  archived_bool: boolean;
+  archived: boolean;
 }
 
 export interface Task {
@@ -32,11 +78,12 @@ export interface Task {
   weight: number;
   assignee: string;
   due_date?: string | null;
-  recurrence?: string | null;
+  recurrence?: Recurrence;
   project_id?: string | null;
   profile_ids: string[];
   created_at: string;
-  archived_bool: boolean;
+  archived: boolean;
+  rank?: number;
 }
 
 export interface Project {
@@ -59,7 +106,8 @@ export interface Meeting {
   linked_project_id?: string | null;
   notes_md: string;
   location?: string | null;
-  recurrence?: string | null;
+  recurrence?: Recurrence;
+  archived: boolean;
 }
 
 export interface FileMeta {
@@ -128,6 +176,7 @@ export interface CreateTaskInput {
   due_date?: string | null;
   project_id?: string | null;
   profile_ids: string[];
+  recurrence?: Recurrence;
 }
 
 export interface CreateMeetingInput {
@@ -139,6 +188,7 @@ export interface CreateMeetingInput {
   linked_project_id?: string | null;
   notes_md: string;
   location?: string | null;
+  recurrence?: Recurrence;
 }
 
 export interface CreateProfileInput {
