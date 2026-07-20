@@ -7,18 +7,50 @@ export function NoteItem({
   note,
   onEdit,
   onDelete,
+  draggable,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  onDragLeave,
+  isDragging,
+  isDragOver,
 }: {
   note: Note;
   onEdit: (note: Note) => void;
   onDelete: (id: string) => void;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragOver?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDrop?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragLeave?: (e: React.DragEvent<HTMLDivElement>) => void;
+  isDragging?: boolean;
+  isDragOver?: boolean;
 }): JSX.Element {
   const { colorOf, nameOf } = useProfiles();
   const [preview, setPreview] = useState(false);
 
+  const cardClass =
+    "card" +
+    (isDragging ? " dragging" : "") +
+    (isDragOver ? " drag-over" : "");
+
   return (
-    <div className="card">
+    <div
+      className={cardClass}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      onDragLeave={onDragLeave}
+    >
       <div className="row between">
-        <h3>{note.title || "(untitled)"}</h3>
+        <div className="row">
+          {draggable ? <span className="drag-handle">⠿</span> : null}
+          <h3>{note.title || "(untitled)"}</h3>
+        </div>
         <div className="row">
           <button type="button" className="btn ghost" onClick={() => setPreview((p) => !p)}>
             {preview ? "Raw" : "Preview"}

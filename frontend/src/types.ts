@@ -14,6 +14,7 @@ export interface Note {
   body_md: string;
   profile_ids: string[];
   tags: string[];
+  manual_order?: number;
   created_at: string;
   updated_at: string;
   linked_meeting_id?: string | null;

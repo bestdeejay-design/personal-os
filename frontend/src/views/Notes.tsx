@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Note, Profile } from "../types";
-import { createNote, deleteNote, getNotes, updateNote } from "../api";
+import { createNote, deleteNote, getNotes, reorderNotes, updateNote } from "../api";
 import { useData } from "../useData";
 import { useProfiles } from "../ProfilesContext";
 import { ProfileChips } from "../components/ProfileChips";
@@ -28,7 +28,12 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
   const [q, setQ] = useState("");
   const [form, setForm] = useState<NoteFormState | null>(null);
   const [saving, setSaving] = useState(false);
-  const { profiles } = useProfiles();
+  const { profiles, nameOf } = useProfiles();
+
+  type SortMode = "manual" | "title" | "profile" | "updated";
+  const [sortMode, setSortMode] = useState<SortMode>("manual");
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   const { data, loading, error, reload } = useData<Note[]>(
     () => getNotes(activeProfiles, q || undefined),
@@ -82,11 +87,98 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
 
   const notes = data ?? [];
 
+  const sortedNotes = useMemo(() => {
+    if (sortMode === "manual" || !data) return notes;
+    return [...notes].sort((a, b) => {
+      switch (sortMode) {
+        case "title":
+          return a.title.localeCompare(b.title);
+        case "profile": {
+          const aName = a.profile_ids[0] ? nameOf(a.profile_ids[0]) : "";
+          const bName = b.profile_ids[0] ? nameOf(b.profile_ids[0]) : "";
+          return aName.localeCompare(bName);
+        }
+        case "updated":
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        default:
+          return 0;
+      }
+    });
+  }, [data, sortMode, nameOf]);
+
+  /* ---------- drag-and-drop handlers ---------- */
+  const handleDragStart = (e: React.DragEvent, noteId: string): void => {
+    e.dataTransfer.setData("text/plain", noteId);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingId(noteId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, idx: number): void => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverIdx(idx);
+  };
+
+  const handleDragLeave = (): void => {
+    setDragOverIdx(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetIdx: number): Promise<void> => {
+    e.preventDefault();
+    const draggedId = e.dataTransfer.getData("text/plain");
+    setDraggingId(null);
+    setDragOverIdx(null);
+    if (!draggedId) return;
+
+    const visibleIds = sortedNotes.map((n) => n.id);
+    const fromIdx = visibleIds.indexOf(draggedId);
+    if (fromIdx === -1 || fromIdx === targetIdx) return;
+
+    // Reorder locally for instant feedback
+    const reordered = [...visibleIds];
+    reordered.splice(fromIdx, 1);
+    const adjustedTarget = fromIdx < targetIdx ? targetIdx - 1 : targetIdx;
+    reordered.splice(adjustedTarget, 0, draggedId);
+
+    if (reordered.every((id, i) => id === visibleIds[i])) return;
+
+    try {
+      await reorderNotes(reordered);
+      reload();
+    } catch (err) {
+      console.error("Failed to reorder notes", err);
+    }
+  };
+
+  const handleDragEnd = (): void => {
+    setDraggingId(null);
+    setDragOverIdx(null);
+  };
+
+  const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+    { value: "manual", label: "Manual" },
+    { value: "title", label: "A–Z" },
+    { value: "profile", label: "Profile" },
+    { value: "updated", label: "Updated" },
+  ];
+
   return (
     <div>
       <div className="section-head">
         <h2>Notes</h2>
         <div className="row">
+          <div className="sort-control" role="group" aria-label="Sort notes by">
+            {SORT_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={sortMode === opt.value ? "active" : ""}
+                onClick={() => setSortMode(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <input
             type="search"
             placeholder="Search notes…"
@@ -104,7 +196,7 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
         <div className="spinner">Loading…</div>
       ) : error ? (
         <EmptyState emoji="⚠️" title="Could not load notes" hint={error} />
-      ) : notes.length === 0 ? (
+      ) : sortedNotes.length === 0 ? (
         <EmptyState
           emoji="📝"
           title={q ? "No notes match your search" : "No notes yet"}
@@ -115,9 +207,22 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
           }
         />
       ) : (
-        <div className="list">
-          {notes.map((n) => (
-            <NoteItem key={n.id} note={n} onEdit={openEdit} onDelete={remove} />
+        <div className="notes-grid">
+          {sortedNotes.map((n, idx) => (
+            <NoteItem
+              key={n.id}
+              note={n}
+              onEdit={openEdit}
+              onDelete={remove}
+              draggable={sortMode === "manual"}
+              onDragStart={(e) => handleDragStart(e, n.id)}
+              onDragOver={(e) => handleDragOver(e, idx)}
+              onDrop={(e) => handleDrop(e, idx)}
+              onDragEnd={handleDragEnd}
+              onDragLeave={handleDragLeave}
+              isDragging={draggingId === n.id}
+              isDragOver={dragOverIdx === idx}
+            />
           ))}
         </div>
       )}

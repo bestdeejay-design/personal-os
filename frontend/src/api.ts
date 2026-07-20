@@ -93,6 +93,14 @@ export function deleteNote(id: string): Promise<void> {
   return request<void>(`/api/notes/${id}`, { method: "DELETE" });
 }
 
+export async function reorderNotes(orderedIds: string[]): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/api/notes/order", {
+    method: "PUT",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ orderedIds }),
+  });
+}
+
 // ---- Tasks ----
 export function getTasks(params: {
   status?: TaskStatus;

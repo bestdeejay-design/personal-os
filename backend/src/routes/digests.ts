@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { pool, isDbReady, jb } from "../db.js";
+import { pool, isDbReady, parseProfileParam } from "../db.js";
 import type { MeetingRow, TaskRow, ReminderRow, TodayData } from "../types.js";
 
 export const digestsRouter = Router();
@@ -39,25 +39,25 @@ digestsRouter.get("/today", async (_req, res) => {
 
 digestsRouter.get("/week", async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: "database unavailable" });
-  const profile = typeof req.query.profile === "string" ? req.query.profile : "";
+  const profiles = parseProfileParam(req.query.profile);
   const days: Array<{ date: string; meetings: MeetingRow[]; tasks: TaskRow[] }> = [];
   for (let i = 0; i < 7; i++) {
     const { start, end } = dayRange(i);
     const mParams: unknown[] = [start, end];
     let mCond = "\"start\" >= $1 AND \"start\" < $2";
-    if (profile) {
-      mParams.push(jb([profile]));
-      mCond += ` AND profile_ids @> $${mParams.length}::jsonb`;
+    if (profiles.length > 0) {
+      mParams.push(profiles);
+      mCond += ` AND profile_ids ?| $${mParams.length}::text[]`;
     }
     const { rows: meetings } = await pool.query<MeetingRow>(
-      `SELECT * FROM meetings WHERE ${mCond} ORDER BY "start" ASC`,
+      `SELECT * FROM meetings WHERE ${mCond} ORDER BY \"start\" ASC`,
       mParams
     );
     const tParams: unknown[] = [start, end];
     let tCond = "due_date >= $1 AND due_date < $2";
-    if (profile) {
-      tParams.push(jb([profile]));
-      tCond += ` AND profile_ids @> $${tParams.length}::jsonb`;
+    if (profiles.length > 0) {
+      tParams.push(profiles);
+      tCond += ` AND profile_ids ?| $${tParams.length}::text[]`;
     }
     const { rows: tasks } = await pool.query<TaskRow>(
       `SELECT * FROM tasks WHERE ${tCond} ORDER BY due_date ASC`,

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
-import { pool, isDbReady, jb } from "../db.js";
+import { pool, isDbReady, jb, parseProfileParam } from "../db.js";
 import { storeEmbedding } from "../search.js";
 import type { TaskRow, TaskInput } from "../types.js";
 
@@ -10,7 +10,7 @@ tasksRouter.get("/", async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: "database unavailable" });
   const status = typeof req.query.status === "string" ? req.query.status : "";
   const project = typeof req.query.project === "string" ? req.query.project : "";
-  const profile = typeof req.query.profile === "string" ? req.query.profile : "";
+  const profiles = parseProfileParam(req.query.profile);
   const conds: string[] = ["archived = false"];
   const params: unknown[] = [];
   if (status) {
@@ -21,9 +21,9 @@ tasksRouter.get("/", async (req, res) => {
     params.push(project);
     conds.push(`project_id = $${params.length}`);
   }
-  if (profile) {
-    params.push(jb([profile]));
-    conds.push(`profile_ids @> $${params.length}::jsonb`);
+  if (profiles.length > 0) {
+    params.push(profiles);
+    conds.push(`profile_ids ?| $${params.length}::text[]`);
   }
   const { rows } = await pool.query<TaskRow>(
     `SELECT * FROM tasks WHERE ${conds.join(" AND ")} ORDER BY weight DESC, created_at DESC`,

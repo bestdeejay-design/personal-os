@@ -458,6 +458,79 @@ label {
   gap: 10px;
 }
 
+/* ---------- Note grid ---------- */
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.notes-grid .card .md-preview,
+.notes-grid .card pre.md-preview {
+  max-height: 130px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+}
+
+.notes-grid .card.dragging {
+  opacity: 0.35;
+  border-style: dashed;
+}
+
+.notes-grid .card.drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* ---------- Drag handle ---------- */
+.drag-handle {
+  cursor: grab;
+  color: var(--muted);
+  user-select: none;
+  padding: 0 4px 0 0;
+  font-size: 16px;
+  line-height: 1;
+  flex: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* ---------- Sort control ---------- */
+.sort-control {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.sort-control button {
+  background: var(--panel);
+  border: none;
+  color: var(--muted);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sort-control button:hover {
+  color: var(--txt);
+  background: var(--panel-2);
+}
+
+.sort-control button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.sort-control button:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
 .list-item {
   background: var(--panel);
   border: 1px solid var(--border);

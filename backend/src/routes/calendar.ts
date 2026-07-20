@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
-import { pool, isDbReady, jb } from "../db.js";
+import { pool, isDbReady, jb, parseProfileParam } from "../db.js";
 import { storeEmbedding } from "../search.js";
 import { toIcs } from "../ics.js";
 import type { MeetingRow, MeetingInput } from "../types.js";
@@ -11,7 +11,7 @@ calendarRouter.get("/", async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: "database unavailable" });
   const from = typeof req.query.from === "string" ? req.query.from : "";
   const to = typeof req.query.to === "string" ? req.query.to : "";
-  const profile = typeof req.query.profile === "string" ? req.query.profile : "";
+  const profiles = parseProfileParam(req.query.profile);
   const conds: string[] = [];
   const params: unknown[] = [];
   if (from) {
@@ -22,9 +22,9 @@ calendarRouter.get("/", async (req, res) => {
     params.push(to);
     conds.push(`"start" <= $${params.length}`);
   }
-  if (profile) {
-    params.push(jb([profile]));
-    conds.push(`profile_ids @> $${params.length}::jsonb`);
+  if (profiles.length > 0) {
+    params.push(profiles);
+    conds.push(`profile_ids ?| $${params.length}::text[]`);
   }
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
   const { rows } = await pool.query<MeetingRow>(

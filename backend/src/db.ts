@@ -22,6 +22,24 @@ export function jb(value: unknown): string {
   return JSON.stringify(value ?? []);
 }
 
+/**
+ * Разбирает параметр profile из query-строки в массив имён профилей.
+ * Поддерживает как массив (`?profile=Work&profile=Family`), так и строку
+ * через запятую (`?profile=Work,Family`, что шлёт фронтенд).
+ */
+export function parseProfileParam(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((v): v is string => typeof v === "string" && v.length > 0);
+  }
+  if (typeof raw === "string" && raw.length > 0) {
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
+  return [];
+}
+
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -41,7 +59,8 @@ CREATE TABLE IF NOT EXISTS notes (
   linked_task_id uuid NULL,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
-  archived boolean DEFAULT false
+  archived boolean DEFAULT false,
+  manual_order int NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -192,6 +211,27 @@ export async function migrate(): Promise<void> {
         // расширение недоступно (нет прав) — для PG13+ функция и так в ядре
       }
       await client.query(SCHEMA_SQL);
+      // Колонка ручной сортировки заметок (добавлена постфактум — совместимо
+      // со старыми таблицами).
+      await client.query(
+        `ALTER TABLE notes ADD COLUMN IF NOT EXISTS manual_order int NOT NULL DEFAULT 0;`
+      );
+      // Однократный бэкапфил: старым заметкам даём порядок по created_at,
+      // чтобы ручная сортировка имела смысл. Пропускаем, если уже есть
+      // пользовательская сортировка (manual_order > 0 где-либо).
+      const { rows: moRows } = await client.query<{ c: number; mx: number }>(
+        "SELECT COUNT(*)::int AS c, COALESCE(MAX(manual_order), 0) AS mx FROM notes"
+      );
+      if (moRows[0]?.c > 0 && moRows[0].mx === 0) {
+        await client.query(`
+          WITH ordered AS (
+            SELECT id, ROW_NUMBER() OVER (ORDER BY created_at ASC) AS rn
+            FROM notes
+          )
+          UPDATE notes SET manual_order = ordered.rn
+          FROM ordered WHERE notes.id = ordered.id;
+        `);
+      }
       await seedProfiles(client);
       await ensureAgentSettings(client);
       dbReady = true;

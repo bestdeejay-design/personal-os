@@ -19,6 +19,7 @@ export interface NoteRow {
   created_at: Date;
   updated_at: Date;
   archived: boolean;
+  manual_order: number;
 }
 
 export interface TaskRow {
@@ -91,6 +92,7 @@ export interface NoteInput {
   linked_project_id?: string | null;
   linked_task_id?: string | null;
   archived?: boolean;
+  manual_order?: number;
 }
 
 export interface TaskInput {
