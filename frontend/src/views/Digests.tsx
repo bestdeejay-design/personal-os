@@ -1,10 +1,67 @@
-import { useState, type ReactNode } from "react";
-import type { Meeting, Task } from "../types";
-import { getToday, getWeek } from "../api";
+import { useState, useEffect, type ReactNode } from "react";
+import type { Meeting, Task, AgentMessage } from "../types";
+import { getAgentInbox, getToday, getWeek, respondToAgent } from "../api";
 import { useData } from "../useData";
 import { useProfiles } from "../ProfilesContext";
 import { PriorityBadge } from "../components/PriorityBadge";
 import { EmptyState } from "../components/EmptyState";
+
+function isToday(iso: string): boolean {
+  const d = new Date(iso);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+function MorningBrief(): JSX.Element | null {
+  const [brief, setBrief] = useState<AgentMessage | null | "loading">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    void getAgentInbox()
+      .then((msgs) => {
+        if (cancelled) return;
+        const found = msgs.find(
+          (m) => m.trigger_type === "daily_digest" && isToday(m.created_at) && !m.resolved,
+        );
+        setBrief(found ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setBrief(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dismiss = async (id: string): Promise<void> => {
+    try {
+      await respondToAgent(id, "accept");
+      setBrief(null);
+      } catch {
+        /* empty */
+      }
+  };
+
+  if (brief === "loading") return null;
+  if (!brief) return null;
+
+  return (
+    <div className="daily-brief">
+      <div className="daily-brief-header">
+        <span className="daily-brief-icon">🌅</span>
+        <span className="daily-brief-title">Morning Brief</span>
+      </div>
+      <p className="daily-brief-body">{brief.body}</p>
+      <button type="button" className="btn ghost" onClick={() => dismiss(brief.id)}>
+        Dismiss
+      </button>
+    </div>
+  );
+}
 
 function fmt(iso: string): string {
   const d = new Date(iso);
@@ -26,6 +83,8 @@ export function Digests({ activeProfiles }: { activeProfiles: string[] }): JSX.E
 
   return (
     <div>
+      <MorningBrief />
+
       <div className="section-head">
         <h2>Digests</h2>
         <div className="chips-row">

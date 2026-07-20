@@ -131,3 +131,33 @@ export interface TodayData {
   tasks: TaskRow[];
   reminders: ReminderRow[];
 }
+
+// ──────────────────────────────────────────
+// Agent P2 types
+// ──────────────────────────────────────────
+
+export interface SuggestedAction {
+  type: "create_note" | "create_task" | "create_meeting" | "reprioritize" | "reschedule";
+  label: string;
+  params: Record<string, unknown>;
+}
+
+export interface AgentMessageRow {
+  id: string;
+  trigger_type: string;
+  title: string;
+  body: string;
+  suggested_actions_json: SuggestedAction[];
+  created_at: Date;
+  resolved: boolean;
+  response: string | null;
+  profile_ids: string[];
+  ref_id: string | null;
+}
+
+export interface AgentRunRow {
+  id: string;
+  run_at: Date;
+  triggered: string[];
+  messages_created: number;
+}

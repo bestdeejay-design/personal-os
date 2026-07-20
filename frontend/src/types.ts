@@ -144,3 +144,21 @@ export interface CreateProfileInput {
   name: string;
   color: string;
 }
+
+export interface SuggestedAction {
+  type: "create_note" | "create_task" | "create_meeting" | "reprioritize" | "reschedule";
+  label: string;
+  params: Record<string, unknown>;
+}
+
+export interface AgentMessage {
+  id: string;
+  trigger_type: string;
+  title: string;
+  body: string;
+  suggested_actions_json: SuggestedAction[];
+  created_at: string;
+  resolved: boolean;
+  response: string | null;
+  profile_ids: string[];
+}

@@ -29,7 +29,7 @@ services:
       PORT: "8081"
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/personalos"
       OLLAMA_HOST: "http://host.docker.internal:11434"
-      GEN_MODEL: "minimax-m3:cloud"
+      GEN_MODEL: "qwen2.5:7b"
       EMBED_MODEL: "nomic-embed-text"
       DATA_DIR: "/data/uploads"
     volumes:

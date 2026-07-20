@@ -7,6 +7,7 @@ import { ProfileChips } from "../components/ProfileChips";
 import { NoteItem } from "../components/NoteItem";
 import { Modal } from "../components/Modal";
 import { EmptyState } from "../components/EmptyState";
+import { DictationButton } from "../components/DictationButton";
 
 interface NoteFormState {
   id?: string;
@@ -186,12 +187,19 @@ function NoteModal({
       </div>
       <div className="field">
         <label>Body (Markdown)</label>
-        <textarea
-          rows={8}
-          value={form.body_md}
-          onChange={(e) => onChange({ ...form, body_md: e.target.value })}
-          placeholder="Write in **markdown**…"
-        />
+        <div className="textarea-row">
+          <textarea
+            rows={8}
+            value={form.body_md}
+            onChange={(e) => onChange({ ...form, body_md: e.target.value })}
+            placeholder="Write in **markdown**…"
+          />
+          <DictationButton
+            onTranscript={(t) =>
+              onChange({ ...form, body_md: form.body_md + t })
+            }
+          />
+        </div>
       </div>
       <div className="field">
         <label>Tags (comma separated)</label>

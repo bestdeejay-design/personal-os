@@ -1,4 +1,5 @@
 import type {
+  AgentMessage,
   CreateMeetingInput,
   CreateNoteInput,
   CreateProfileInput,
@@ -235,5 +236,39 @@ export function saveSetting(key: string, value: string): Promise<Setting> {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify({ key, value }),
+  });
+}
+
+// ---- Agent Inbox ----
+export function getAgentInbox(profile?: string[]): Promise<AgentMessage[]> {
+  const query = buildQuery({ profile: profile ?? [] });
+  return request<AgentMessage[]>(`/api/agent/inbox${query}`);
+}
+
+export function respondToAgent(
+  id: string,
+  action: "accept" | "reject" | "reply",
+  text?: string,
+): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/api/agent/respond", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ id, action, text }),
+  });
+}
+
+export function dismissAllAgentMessages(): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/api/agent/dismiss-all", {
+    method: "POST",
+    headers: JSON_HEADERS,
+  });
+}
+
+// ---- TTS ----
+export function triggerSpeak(text: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/api/notify/speak", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ text }),
   });
 }

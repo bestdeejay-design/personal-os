@@ -17,6 +17,9 @@ import { searchRouter } from "./routes/search.js";
 import { settingsRouter } from "./routes/settings.js";
 import { digestsRouter } from "./routes/digests.js";
 import { getTodayData } from "./routes/digests.js";
+import { agentRouter } from "./routes/agent.js";
+import { voiceRouter, handleTranscribe } from "./routes/voice.js";
+import { startAgentWorker } from "./agent-worker.js";
 import type { ReminderRow } from "./types.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -40,6 +43,9 @@ app.use("/api/files", filesRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api", digestsRouter);
+app.use("/api/agent", agentRouter);
+app.use("/api/notify", voiceRouter);
+app.post("/api/notes/transcribe", express.raw({ type: "*/*", limit: "10mb" }), handleTranscribe);
 
 // Отдаём собранный фронтенд, если он лежит рядом (single-origin в docker).
 const frontendDist = join(__dirname, "../frontend/dist");
@@ -61,6 +67,17 @@ wss.on("connection", (ws) => {
     .catch(() => {
       ws.send(JSON.stringify({ type: "today", payload: null }));
     });
+  // Отправляем количество неразрешённых сообщений агента
+  if (isDbReady()) {
+    pool
+      .query<{ c: number }>("SELECT COUNT(*)::int AS c FROM agent_messages WHERE resolved = false")
+      .then(({ rows }) => {
+        ws.send(JSON.stringify({ type: "agent_inbox_count", payload: rows[0]?.c ?? 0 }));
+      })
+      .catch(() => {
+        // ошибка запроса — игнорируем
+      });
+  }
 });
 
 // Периодическая проверка напоминаний: WS-пуш при наступлении fire_at.
@@ -93,4 +110,13 @@ server.listen(PORT, () => {
   console.log(`[server] Personal OS backend listening on :${PORT}`);
 });
 
-void migrate();
+// Воркер агента стартует ТОЛЬКО после завершения миграции,
+// иначе первый тик падает с "relation agent_messages does not exist".
+void migrate()
+  .then(() => {
+    startAgentWorker(wss);
+    console.log("[agent] worker started");
+  })
+  .catch((err) => {
+    console.error("[agent] migration failed, worker not started:", (err as Error).message);
+  });

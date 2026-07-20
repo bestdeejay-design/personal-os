@@ -110,6 +110,26 @@ CREATE TABLE IF NOT EXISTS settings (
   value jsonb
 );
 
+CREATE TABLE IF NOT EXISTS agent_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  trigger_type text NOT NULL,
+  title text NOT NULL DEFAULT '',
+  body text NOT NULL DEFAULT '',
+  suggested_actions_json jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  resolved bool NOT NULL DEFAULT false,
+  response text,
+  profile_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+  ref_id uuid NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  run_at timestamptz NOT NULL DEFAULT now(),
+  triggered text[] DEFAULT '{}',
+  messages_created int NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS embeddings (
   entity_type text NOT NULL,
   entity_id uuid NOT NULL,
@@ -139,6 +159,21 @@ async function seedProfiles(client: pg.PoolClient): Promise<void> {
   console.log("[db] seeded default profiles");
 }
 
+async function ensureAgentSettings(client: pg.PoolClient): Promise<void> {
+  const entries: Array<[string, unknown]> = [
+    ["agent_dnd_start", "22:00"],
+    ["agent_dnd_end", "08:00"],
+    ["agent_daily_cap", 5],
+    ["agent_enabled", true],
+  ];
+  for (const [key, value] of entries) {
+    await client.query(
+      "INSERT INTO settings (key, value) VALUES ($1, $2::jsonb) ON CONFLICT (key) DO NOTHING",
+      [key, jb(value)]
+    );
+  }
+}
+
 /**
  * Накатывает схему и сид-профили. При недоступности БД делает несколько
  * попыток с паузой, но НЕ падает — сервер стартует и отдаёт 503 на
@@ -158,6 +193,7 @@ export async function migrate(): Promise<void> {
       }
       await client.query(SCHEMA_SQL);
       await seedProfiles(client);
+      await ensureAgentSettings(client);
       dbReady = true;
       console.log("[db] migrations applied, database ready");
       return;

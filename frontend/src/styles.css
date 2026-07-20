@@ -603,3 +603,210 @@ label {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Inbox badge ---------- */
+.inbox-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ---------- Inbox messages ---------- */
+.inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inbox-message {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inbox-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inbox-icon {
+  font-size: 18px;
+  flex: none;
+}
+
+.inbox-trigger {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.inbox-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.inbox-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.inbox-body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--txt);
+  line-height: 1.6;
+}
+
+.inbox-profiles {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.inbox-profile-chip {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.inbox-suggested {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inbox-chip {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.inbox-chip:hover {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.inbox-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.inbox-reply {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.inbox-reply textarea {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--txt);
+  resize: vertical;
+}
+
+.inbox-reply textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ---------- Daily Brief ---------- */
+.daily-brief {
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.daily-brief-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.daily-brief-icon {
+  font-size: 20px;
+}
+
+.daily-brief-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.daily-brief-body {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--txt);
+}
+
+/* ---------- Dictation button ---------- */
+.textarea-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.textarea-row textarea {
+  flex: 1;
+}
+
+.dictation-btn {
+  flex: none;
+  transition: box-shadow 0.2s ease;
+}
+
+.dictation-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dictation-btn.listening {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 50%, transparent);
+  animation: pulse-mic 1.2s ease infinite;
+}
+
+@keyframes pulse-mic {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+}

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import type { Profile } from "./types";
-import { createProfile, getProfiles } from "./api";
+import { useCallback, useEffect, useState } from "react";
+import type { Profile, AgentMessage } from "./types";
+import { createProfile, getProfiles, getSettings } from "./api";
 import {
   DEFAULT_PROFILE_COLORS,
   loadInitialSettings,
@@ -10,6 +10,7 @@ import {
 } from "./theme";
 import { buildProfilesValue, ProfilesContext } from "./ProfilesContext";
 import { ToastProvider, useToast } from "./components/Toast";
+import { AgentSettings } from "./components/AgentSettings";
 import { ProfileChips } from "./components/ProfileChips";
 import { Notes } from "./views/Notes";
 import { Kanban } from "./views/Kanban";
@@ -17,9 +18,11 @@ import { Calendar } from "./views/Calendar";
 import { Files } from "./views/Files";
 import { Digests } from "./views/Digests";
 import { Search } from "./views/Search";
+import { AgentInbox } from "./views/AgentInbox";
 import { useWebSocket } from "./useWebSocket";
+import { useSpeechSynthesis } from "./useSpeechSynthesis";
 
-type ViewKey = "notes" | "kanban" | "calendar" | "files" | "digests" | "search";
+type ViewKey = "notes" | "kanban" | "calendar" | "files" | "digests" | "search" | "inbox";
 
 const TABS: { key: ViewKey; label: string }[] = [
   { key: "notes", label: "Notes" },
@@ -27,6 +30,7 @@ const TABS: { key: ViewKey; label: string }[] = [
   { key: "calendar", label: "Calendar" },
   { key: "files", label: "Files" },
   { key: "digests", label: "Digests" },
+  { key: "inbox", label: "Inbox" },
   { key: "search", label: "Search" },
 ];
 
@@ -36,7 +40,21 @@ function AppInner(): JSX.Element {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeProfiles, setActiveProfiles] = useState<string[]>([]);
   const [view, setView] = useState<ViewKey>("notes");
+  const [agentUnread, setAgentUnread] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
   const toast = useToast();
+  const { speak } = useSpeechSynthesis();
+
+  useEffect(() => {
+    void getSettings()
+      .then((list) => {
+        const map: Record<string, string> = {};
+        for (const s of list) map[s.key] = s.value;
+        if (map.tts_enabled === "true") setTtsEnabled(true);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     void loadInitialSettings().then((s) => {
@@ -61,23 +79,47 @@ function AppInner(): JSX.Element {
       });
   }, []);
 
-  useWebSocket((data: unknown) => {
-    if (data && typeof data === "object") {
-      const obj = data as { title?: unknown; body?: unknown; text?: unknown; message?: unknown };
-      const title =
-        typeof obj.title === "string"
-          ? obj.title
-          : typeof obj.text === "string"
-            ? obj.text
-            : typeof obj.message === "string"
-              ? obj.message
-              : "Notification";
-      const body = typeof obj.body === "string" ? obj.body : undefined;
-      toast.push(title, body);
-    } else if (typeof data === "string") {
-      toast.push(data);
-    }
-  });
+  const handleWsMessage = useCallback(
+    (data: unknown): void => {
+      if (data && typeof data === "object") {
+        const obj = data as Record<string, unknown>;
+
+        if (obj.type === "agent_inbox_count") {
+          const count = typeof obj.payload === "number" ? obj.payload : 0;
+          setAgentUnread(count);
+          return;
+        }
+
+        if (obj.type === "agent_message") {
+          const payload = obj.payload as AgentMessage | undefined;
+          if (payload) {
+            setAgentUnread((c) => c + 1);
+            toast.push(payload.title, payload.body);
+            if (ttsEnabled && payload.body) {
+              speak(payload.body);
+            }
+          }
+          return;
+        }
+
+        const title =
+          typeof obj.title === "string"
+            ? obj.title
+            : typeof obj.text === "string"
+              ? obj.text
+              : typeof obj.message === "string"
+                ? obj.message
+                : "Notification";
+        const body = typeof obj.body === "string" ? obj.body : undefined;
+        toast.push(title, body);
+      } else if (typeof data === "string") {
+        toast.push(data);
+      }
+    },
+    [toast, ttsEnabled, speak],
+  );
+
+  useWebSocket(handleWsMessage);
 
   const toggleTheme = (): void => {
     const next: Theme = theme === "dark" ? "light" : "dark";
@@ -94,6 +136,17 @@ function AppInner(): JSX.Element {
     setActiveProfiles((prev) =>
       prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
     );
+  };
+
+  const onInboxUnread = useCallback((n: number): void => {
+    setAgentUnread(n);
+  }, []);
+
+  const onViewChange = (key: ViewKey): void => {
+    setView(key);
+    if (key === "inbox") {
+      setAgentUnread(0);
+    }
   };
 
   const ctx = buildProfilesValue(profiles);
@@ -126,6 +179,15 @@ function AppInner(): JSX.Element {
               background: "var(--panel-2)",
             }}
           />
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setShowSettings(true)}
+            title="Agent settings"
+            aria-label="Agent settings"
+          >
+            ⚙
+          </button>
           <button type="button" className="icon-btn" onClick={toggleTheme} title="Toggle theme">
             {theme === "dark" ? "☀" : "🌙"}
           </button>
@@ -137,9 +199,13 @@ function AppInner(): JSX.Element {
               key={tab.key}
               type="button"
               className={view === tab.key ? "active" : ""}
-              onClick={() => setView(tab.key)}
+              onClick={() => onViewChange(tab.key)}
+              style={{ position: "relative" }}
             >
               {tab.label}
+              {tab.key === "inbox" && agentUnread > 0 ? (
+                <span className="inbox-badge">{agentUnread > 99 ? "99+" : agentUnread}</span>
+              ) : null}
             </button>
           ))}
         </nav>
@@ -150,8 +216,13 @@ function AppInner(): JSX.Element {
           {view === "calendar" ? <Calendar activeProfiles={activeProfiles} /> : null}
           {view === "files" ? <Files /> : null}
           {view === "digests" ? <Digests activeProfiles={activeProfiles} /> : null}
+          {view === "inbox" ? (
+            <AgentInbox activeProfiles={activeProfiles} onUnreadChange={onInboxUnread} />
+          ) : null}
           {view === "search" ? <Search /> : null}
         </main>
+
+        <AgentSettings open={showSettings} onClose={() => setShowSettings(false)} />
       </div>
     </ProfilesContext.Provider>
   );
