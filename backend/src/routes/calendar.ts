@@ -16,11 +16,11 @@ calendarRouter.get("/", async (req, res) => {
   const params: unknown[] = [];
   if (from) {
     params.push(from);
-    conds.push(`start >= $${params.length}`);
+    conds.push(`"start" >= $${params.length}`);
   }
   if (to) {
     params.push(to);
-    conds.push(`start <= $${params.length}`);
+    conds.push(`"start" <= $${params.length}`);
   }
   if (profile) {
     params.push(jb([profile]));
@@ -28,7 +28,7 @@ calendarRouter.get("/", async (req, res) => {
   }
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
   const { rows } = await pool.query<MeetingRow>(
-    `SELECT * FROM meetings ${where} ORDER BY start ASC`,
+    `SELECT * FROM meetings ${where} ORDER BY "start" ASC`,
     params
   );
   res.json(rows);
@@ -42,7 +42,7 @@ calendarRouter.post("/", async (req, res) => {
   }
   const id = randomUUID();
   const { rows } = await pool.query<MeetingRow>(
-    `INSERT INTO meetings (id, title, start, end, all_day, profile_ids, linked_project_id, notes_md, location, recurrence)
+     `INSERT INTO meetings (id, title, "start", "end", all_day, profile_ids, linked_project_id, notes_md, location, recurrence)
      VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10::jsonb) RETURNING *`,
     [
       id,

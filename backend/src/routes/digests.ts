@@ -17,7 +17,7 @@ function dayRange(offsetDays: number): { start: Date; end: Date } {
 export async function getTodayData(): Promise<TodayData> {
   const { start, end } = dayRange(0);
   const { rows: meetings } = await pool.query<MeetingRow>(
-    "SELECT * FROM meetings WHERE start >= $1 AND start < $2 ORDER BY start ASC",
+    "SELECT * FROM meetings WHERE \"start\" >= $1 AND \"start\" < $2 ORDER BY \"start\" ASC",
     [start, end]
   );
   const { rows: tasks } = await pool.query<TaskRow>(
@@ -44,13 +44,13 @@ digestsRouter.get("/week", async (req, res) => {
   for (let i = 0; i < 7; i++) {
     const { start, end } = dayRange(i);
     const mParams: unknown[] = [start, end];
-    let mCond = "start >= $1 AND start < $2";
+    let mCond = "\"start\" >= $1 AND \"start\" < $2";
     if (profile) {
       mParams.push(jb([profile]));
       mCond += ` AND profile_ids @> $${mParams.length}::jsonb`;
     }
     const { rows: meetings } = await pool.query<MeetingRow>(
-      `SELECT * FROM meetings WHERE ${mCond} ORDER BY start ASC`,
+      `SELECT * FROM meetings WHERE ${mCond} ORDER BY "start" ASC`,
       mParams
     );
     const tParams: unknown[] = [start, end];

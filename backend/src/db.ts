@@ -73,8 +73,8 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE TABLE IF NOT EXISTS meetings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
-  start timestamptz NOT NULL,
-  end timestamptz NOT NULL,
+  "start" timestamptz NOT NULL,
+  "end" timestamptz NOT NULL,
   all_day boolean DEFAULT false,
   profile_ids jsonb DEFAULT '[]'::jsonb,
   linked_project_id uuid NULL,
