@@ -1,0 +1,50 @@
+# Personal OS — стек для OrbStack / Docker
+# Поднимает: PostgreSQL + backend (API) + frontend (nginx).
+# Запуск: orbctl start  (если демон не запущен), затем:  docker compose up --build
+# Открыть: http://localhost:8080
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: personalos
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: "8081"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/personalos"
+      OLLAMA_HOST: "http://host.docker.internal:11434"
+      GEN_MODEL: "minimax-m3:cloud"
+      EMBED_MODEL: "nomic-embed-text"
+      DATA_DIR: "/data/uploads"
+    volumes:
+      - appdata:/data
+    # порт не публикуем наружу — к нему ходит только frontend (nginx) внутри сети
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    # nginx внутри проксирует /api и /ws на backend:8081
+
+volumes:
+  pgdata:
+  appdata:

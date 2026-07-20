@@ -1,0 +1,31 @@
+{
+  "name": "personal-os-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal OS Phase 1 backend: REST + WebSocket server backed by PostgreSQL with Ollama semantic search.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "multer": "^2.2.0",
+    "ollama": "^0.5.11",
+    "pg": "^8.12.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.13",
+    "@types/node": "^20.14.0",
+    "@types/pg": "^8.11.6",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
