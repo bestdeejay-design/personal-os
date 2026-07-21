@@ -9,3 +9,4 @@ data/
 target/
 *.app
 *.dmg
+desktop/src-tauri/stack/
