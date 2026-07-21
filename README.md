@@ -1,91 +1,153 @@
-# Personal OS
+# Personal OS v0.0.10
 
-Личный операционный центр: заметки, канбан-задачи, проекты, календарь, файлы,
-профили (Work / Home / Family / Friends) и дайджесты дня/недели в одном месте.
-Поиск и агент-подсказки работают поверх локального RAG (Ollama, бесплатные модели).
+**Личный операционный центр.** Заметки, канбан-задачи, проекты, календарь,
+файлы, профили (Work / Home / Family / Friends), дайджесты дня/недели,
+агент-подсказки и семантический поиск — всё в одном месте, полностью локально.
 
-> Проект портфолио. Полностью бесплатно: локально (Ollama, OrbStack) + free-tier
-> облачные модели Ollama-провайдера (`minimax-m3:cloud`, `nemotron-3-super:cloud`).
+> 🎯 **Для кого:** разработчики, продакт-менеджеры, фрилансеры и все, кто
+> хочет единое рабочее пространство с полным контролем над своими данными.
+> Никаких облаков, никаких подписок — только ваш компьютер.
 
-## Стек
+## Возможности
 
-- **Frontend** — React + Vite + TypeScript, тёмная/светлая темы, настраиваемый акцент.
-  Сборка в статику, отдаётся через nginx (внутри контейнера).
-- **Backend** — Node.js + TypeScript + Express + PostgreSQL (`pg`), WebSocket для
-  realtime-агента, RAG-клиент к Ollama.
-- **Инфра** — OrbStack + Docker Compose (postgres / backend / frontend).
-- **RAG** — Ollama: `nomic-embed-text` (эмбеддинги) + генеративная модель
-  (`minimax-m3:cloud`). Без Ollama агент-фичи неактивны, остальное работает.
+| Раздел | Что умеет |
+|--------|-----------|
+| 📝 **Заметки** | Markdown, теги, привязка к профилям/задачам/проектам, ручная сортировка |
+| 📋 **Канбан** | Статусы backlog → todo → in_progress → done, приоритеты, вес, ранг |
+| 📅 **Календарь** | События, профильная фильтрация, ICS-экспорт, рекурренция |
+| 📁 **Проекты** | Группировка задач и заметок, статус, цель |
+| 👤 **Профили** | Work / Home / Family / Friends — полная изоляция контекстов |
+| 🔍 **Поиск** | Семантический (Ollama) + текстовый ILIKE, ед. поле поиска |
+| 🤖 **Агент** | Тональность, напоминания, дайджесты дня и недели, DND-окна |
+| 🎨 **Темы** | Тёмная / светлая, настраиваемый акцентный цвет |
+| 🖥️ **Desktop** | Tauri v2 .app — бандлит и запускает весь стек одной иконкой |
+| 📎 **Файлы** | Загрузка, привязка к сущностям |
+| ⏰ **Напоминания** | По времени, с WebSocket-пущем |
+| 📊 **Аналитика** | Распределение задач, продуктивность |
 
-## Фазы
+## Скриншоты
 
-- **P1 — каркас (готово)**: профили, заметки, задачи/канбан, проекты, календарь
-  (внутренний + `.ics` экспорт), файлы, поиск, дайджесты, настройки темы.
-- **P2 — агент + голос**: tone-of-voice агент, STT/TTS, ежедневные дайджесты.
-- **P3 — глубина**: пересечения плоскостей профилей, приоритизация-как-процесс.
-- **P4 — натив**: обёртка Tauri 2 вместо веба.
+(добавьте скриншоты по мере развития)
 
-## Быстрый старт (OrbStack)
+## Быстрый старт
 
-Требования: установленный [OrbStack](https://orbstack.dev) с Docker, опционально
-[Ollama](https://ollama.com) для RAG.
+### Требования
+
+- [OrbStack](https://orbstack.dev) (или Docker Desktop)
+- [Ollama](https://ollama.com) (опционально, для RAG/агента)
+
+### 1. Запустить стек
 
 ```bash
-# 1. Запустить виртуальную машину OrbStack (один раз)
-orbctl start
+# Склонировать
+git clone https://github.com/bestdeejay-design/personal-os.git
+cd personal-os
 
-# 2. Поднять стек (postgres + backend + frontend)
+# Запустить
 docker compose up --build
 
-# 3. Открыть в браузере
+# Открыть
 open http://localhost:8080
 ```
 
-Остановить: `docker compose down`. Удалить данные вместе с томами: `docker compose down -v`.
+### 2. Заполнить демо-данными (опционально)
+
+```bash
+bash backend/seed-demo.sh
+```
+
+После этого в системе появятся примеры заметок, задач, событий
+календаря и приветственное сообщение агента — чтобы сразу оценить
+все возможности.
+
+### 3. Пользоваться
+
+Переключайте профили в боковом меню — данные фильтруются по контексту
+(Work, Home, Family, Friends). Пробуйте поиск, перетаскивайте задачи
+между колонками канбана, экспортируйте события в .ics.
+
+### Остановка
+
+```bash
+docker compose down              # остановить
+docker compose down -v           # остановить + удалить все данные
+```
 
 ### RAG (опционально)
 
-Если Ollama запущена на хосте (Mac), бэкенд в контейнере достанет её через
-`host.docker.internal:11434` — это уже прописано в `docker-compose.yml`.
-Для локального запуска бэкенда вне Docker см. `backend/.env.example`.
+Для семантического поиска и агента нужна Ollama:
 
 ```bash
 ollama pull nomic-embed-text
-ollama pull minimax-m3:cloud   # или другая генеративная модель
+ollama pull qwen2.5:7b          # или minimax-m3:cloud / nemotron-3-super:cloud
 ```
 
-## Переменные окружения (backend)
+Бэкенд в контейнере достаёт Ollama через `host.docker.internal:11434`.
 
-См. `backend/.env.example`. В Docker значения задаются в `docker-compose.yml`.
+## Desktop-приложение (macOS)
 
-| Переменная      | По умолчанию                        | Назначение                         |
-|-----------------|-------------------------------------|------------------------------------|
-| `PORT`          | `8080` (в docker `8081`)            | Порт бэкенда                       |
-| `DATABASE_URL`  | `postgres://...@localhost:5432/...` | Строка подключения к PostgreSQL    |
-| `OLLAMA_HOST`   | `http://localhost:11434`            | Эндпоинт Ollama                    |
-| `GEN_MODEL`     | `minimax-m3:cloud`                  | Генеративная модель для агента     |
-| `EMBED_MODEL`   | `nomic-embed-text`                  | Модель эмбеддингов                 |
-| `DATA_DIR`      | `./data/uploads`                    | Каталог загрузок файлов            |
+Собранный .app бандлит весь стек внутри себя и запускает одной иконкой:
 
-## Структура
-
-```
-personal-os/
-├── docker-compose.yml     # оркестрация postgres + backend + frontend
-├── backend/               # Node + TS + Express + pg + RAG-клиент
-│   └── src/               # index, db, rag, ics, routes/*
-└── frontend/              # React + Vite, тема, модули P1
-    └── src/               # App, api, theme, components/, views/
+```bash
+cd desktop && npm run build
+open src-tauri/target/release/bundle/macos/Personal\ OS.app
 ```
 
-## Разработка без Docker
+При первом запуске стек извлекается в `~/Library/Application Support/`,
+дальше работает как обычное приложение. Для выхода — Cmd+Q или закрыть окно.
+
+## Технологический стек
+
+```
+Frontend:      React + Vite + TypeScript
+Backend:       Node.js + Express + TypeScript + PostgreSQL (pg)
+Инфра:         OrbStack / Docker Compose
+RAG:           Ollama (nomic-embed-text, qwen2.5:7b)
+Desktop:       Tauri v2 (Rust)
+```
+
+## Версионирование
+
+| Версия | Дата | Изменения |
+|--------|------|-----------|
+| 0.0.10 | июль 2026 | Первый публичный релиз: P1–P3 функционал, Tauri shell, README, демо-данные |
+
+Правила:
+- **Мажорные** (+0.1.00) — новые разделы, архитектурные изменения
+- **Минорные** (+0.0.01) — новые фичи, улучшения, багфиксы
+
+Полные правила — в [AGENTS.md](./AGENTS.md).
+
+## Разработка
 
 ```bash
 # Бэкенд
-cd backend && npm install && npx tsc --noEmit
+cd backend && npm install && npx tsc
 
 # Фронтенд
 cd frontend && npm install && npm run build
+
+# Desktop
+cd desktop && npm install && npm run build
 ```
 
-Подробная спецификация и поведение агента — в `docs/SPEC.md`.
+## Структура репозитория
+
+```
+personal-os/
+├── AGENTS.md                # правила для AI-агентов
+├── README.md                # этот файл
+├── docker-compose.yml       # оркестрация
+├── backend/
+│   ├── src/                 # Express-сервер, routes, БД, RAG
+│   └── seed-demo.sh         # заполнение демо-данными
+├── frontend/
+│   └── src/                 # React-приложение
+└── desktop/
+    ├── src-tauri/           # Rust + Tauri v2
+    └── scripts/             # copy-stack.sh
+```
+
+## Лицензия
+
+MIT — делайте что хотите.
