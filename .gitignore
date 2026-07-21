@@ -6,3 +6,6 @@ data/
 *.log
 .DS_Store
 *.tsbuildinfo
+target/
+*.app
+*.dmg

@@ -1,0 +1,7 @@
+{
+  "name": "personal-os-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": { "tauri": "tauri", "build": "tauri build" },
+  "devDependencies": { "@tauri-apps/cli": "^2" }
+}
