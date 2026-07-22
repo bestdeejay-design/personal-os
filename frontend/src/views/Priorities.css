@@ -49,6 +49,13 @@
   border-radius: var(--radius);
   cursor: grab;
   transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  /* All children must not capture pointer events so the <li> itself
+     is always the drag-and-drop target. This prevents onDragLeave from
+     firing when the cursor enters a child span (handle, title, chips…)
+     which would otherwise swallow the onDrop event. */
+}
+.prio-row > * {
+  pointer-events: none;
 }
 
 .prio-row:hover {

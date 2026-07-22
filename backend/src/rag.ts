@@ -5,7 +5,7 @@ import { Ollama } from "ollama";
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST ?? "http://localhost:11434";
 const EMBED_MODEL = process.env.EMBED_MODEL ?? "nomic-embed-text";
-const GEN_MODEL = process.env.GEN_MODEL ?? "minimax-m3:cloud";
+const GEN_MODEL = process.env.GEN_MODEL ?? "qwen2.5:7b";
 
 const ollama = new Ollama({ host: OLLAMA_HOST });
 
@@ -30,11 +30,11 @@ export function cosine(a: number[], b: number[]): number {
   return denom === 0 ? 0 : dot / denom;
 }
 
-// Fallback-цепочка генерации (из rag.ts): сначала заданная/облачная модель,
-// затем локальные. Первая доступная отвечает; при ошибке — следующая.
+// Fallback-цепочка генерации: сначала заданная модель, затем запасные.
+// Первая доступная отвечает; при ошибке — следующая.
 const GEN_FALLBACK: readonly string[] = GEN_MODEL
   ? [GEN_MODEL]
-  : ["minimax-m3:cloud", "nemotron-3-super:cloud", "deepseek-r1", "yi-coder"];
+  : ["qwen2.5:7b", "deepseek-r1", "yi-coder"];
 
 export interface GenerationResult {
   text: string;

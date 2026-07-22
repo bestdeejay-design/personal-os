@@ -58,6 +58,33 @@
   margin-top: 4px;
 }
 
+.import-file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.import-file-row .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.import-whole-toggle {
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.import-whole-toggle input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
 .import-error {
   border-left: 3px solid var(--danger);
 }

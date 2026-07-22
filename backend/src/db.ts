@@ -40,6 +40,45 @@ export function parseProfileParam(raw: unknown): string[] {
   return [];
 }
 
+/**
+ * Идентификатор для «несортированных» записей (пустой profile_ids).
+ * Используется в фильтре сайдбара — показывать элементы без профиля.
+ */
+export const UNSORTED_PROFILE = "__unsorted__";
+
+/**
+ * Строит SQL-условие для фильтрации по профилям с поддержкой __unsorted__.
+ *
+ * Если в массиве profiles есть UNSORTED_PROFILE, условие будет включать
+ * `profile_ids = '[]'::jsonb` через OR.
+ *
+ * @returns { clause, filteredProfiles } — SQL-фрагмент (пустая строка если нет
+ *   фильтра) и массив profiles без UNSORTED_PROFILE для передачи в параметры.
+ */
+export function buildProfileFilter(
+  profiles: string[],
+  paramIndex: number
+): { clause: string; filteredProfiles: string[] } {
+  const hasUnsorted = profiles.includes(UNSORTED_PROFILE);
+  const filteredProfiles = profiles.filter((p) => p !== UNSORTED_PROFILE);
+
+  const parts: string[] = [];
+  if (filteredProfiles.length > 0) {
+    parts.push(`profile_ids ?| $${paramIndex}::text[]`);
+  }
+  if (hasUnsorted) {
+    // Пустой profile_ids OR содержит ID, которых нет в таблице profiles
+    parts.push(
+      `(profile_ids = '[]'::jsonb OR NOT (profile_ids <@ (SELECT COALESCE(jsonb_agg(id), '[]'::jsonb) FROM profiles)))`
+    );
+  }
+
+  return {
+    clause: parts.length > 0 ? `(${parts.join(" OR ")})` : "",
+    filteredProfiles,
+  };
+}
+
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -112,7 +151,9 @@ CREATE TABLE IF NOT EXISTS file_meta (
   owner_type text,
   owner_id uuid NULL,
   stored_path text,
-  uploaded_at timestamptz DEFAULT now()
+  uploaded_at timestamptz DEFAULT now(),
+  profile_ids jsonb DEFAULT '[]'::jsonb,
+  extracted_text text DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS reminders (
@@ -173,8 +214,8 @@ async function seedProfiles(client: pg.PoolClient): Promise<void> {
   if (rows[0]?.c > 0) return;
   for (const [name, color, isDefault] of DEFAULT_PROFILES) {
     await client.query(
-      "INSERT INTO profiles (id, name, color, is_default) VALUES ($1, $2, $3, $4)",
-      [randomUUID(), name, color, isDefault]
+      "INSERT INTO profiles (id, name, color, is_default, hidden) VALUES ($1, $2, $3, $4, $5)",
+      [randomUUID(), name, color, isDefault, false]
     );
   }
   console.log("[db] seeded default profiles");
@@ -225,6 +266,17 @@ export async function migrate(): Promise<void> {
       // Колонка архивации встреч (добавлена постфактум).
       await client.query(
         `ALTER TABLE meetings ADD COLUMN IF NOT EXISTS archived boolean DEFAULT false;`
+      );
+      // Колонка скрытия профиля (добавлена постфактум).
+      await client.query(
+        `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS hidden boolean DEFAULT false;`
+      );
+      // Колонки для файлов (добавлены постфактум).
+      await client.query(
+        `ALTER TABLE file_meta ADD COLUMN IF NOT EXISTS profile_ids jsonb DEFAULT '[]'::jsonb;`
+      );
+      await client.query(
+        `ALTER TABLE file_meta ADD COLUMN IF NOT EXISTS extracted_text text DEFAULT '';`
       );
       // Однократный бэкапфил: старым заметкам даём порядок по created_at,
       // чтобы ручная сортировка имела смысл. Пропускаем, если уже есть

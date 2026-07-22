@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { pool, isDbReady, parseProfileParam } from "../db.js";
+import { pool, isDbReady, parseProfileParam, buildProfileFilter } from "../db.js";
 import type { TaskRow, NoteRow, MeetingRow, Analytics } from "../types.js";
 
 export const analyticsRouter = Router();
@@ -16,8 +16,13 @@ analyticsRouter.get("/", async (req, res) => {
   const from = typeof req.query.from === "string" ? req.query.from : "";
   const to = typeof req.query.to === "string" ? req.query.to : "";
 
-  const profileCond = (params: unknown[]): string =>
-    profiles.length > 0 ? `AND profile_ids ?| $${params.push(profiles)}::text[]` : "";
+  const profileCond = (params: unknown[]): string => {
+    if (profiles.length === 0) return "";
+    const { clause, filteredProfiles } = buildProfileFilter(profiles, params.length + 1);
+    if (!clause) return "";
+    if (filteredProfiles.length > 0) params.push(filteredProfiles);
+    return `AND ${clause}`;
+  };
 
   // Задачи (для агрегатов и per_profile).
   const taskParams: unknown[] = [];

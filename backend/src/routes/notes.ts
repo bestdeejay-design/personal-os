@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
-import { pool, isDbReady, jb, parseProfileParam } from "../db.js";
+import { pool, isDbReady, jb, parseProfileParam, buildProfileFilter } from "../db.js";
 import { embedText } from "../rag.js";
 import { semanticRank, storeEmbedding } from "../search.js";
 import type { NoteRow, NoteInput } from "../types.js";
@@ -31,8 +31,11 @@ notesRouter.get("/", async (req, res) => {
         let sql =
           `SELECT * FROM notes WHERE id = ANY($1::uuid[]) AND ${archivedCond}`;
         if (profiles.length > 0) {
-          params.push(profiles);
-          sql += " AND profile_ids ?| $2::text[]";
+          const { clause, filteredProfiles } = buildProfileFilter(profiles, 2);
+          if (clause) {
+            if (filteredProfiles.length > 0) params.push(filteredProfiles);
+            sql += ` AND ${clause}`;
+          }
         }
         const { rows } = await pool.query<NoteRow>(sql, params);
         const order = new Map(ids.map((id, i) => [id, i] as const));
@@ -49,8 +52,11 @@ notesRouter.get("/", async (req, res) => {
     let sql =
       `SELECT * FROM notes WHERE ${archivedCond} AND (title ILIKE $1 OR body_md ILIKE $1)`;
     if (profiles.length > 0) {
-      params.push(profiles);
-      sql += " AND profile_ids ?| $2::text[]";
+      const { clause, filteredProfiles } = buildProfileFilter(profiles, 2);
+      if (clause) {
+        if (filteredProfiles.length > 0) params.push(filteredProfiles);
+        sql += ` AND ${clause}`;
+      }
     }
     sql += " ORDER BY manual_order ASC, updated_at DESC";
     const { rows } = await pool.query<NoteRow>(sql, params);
@@ -61,8 +67,11 @@ notesRouter.get("/", async (req, res) => {
   const params: unknown[] = [];
   const conds: string[] = [archivedCond];
   if (profiles.length > 0) {
-    params.push(profiles);
-    conds.push(`profile_ids ?| $${params.length}::text[]`);
+    const { clause, filteredProfiles } = buildProfileFilter(profiles, params.length + 1);
+    if (clause) {
+      if (filteredProfiles.length > 0) params.push(filteredProfiles);
+      conds.push(clause);
+    }
   }
   const { rows } = await pool.query<NoteRow>(
     `SELECT * FROM notes WHERE ${conds.join(" AND ")} ORDER BY manual_order ASC, updated_at DESC`,

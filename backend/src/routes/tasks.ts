@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
-import { pool, isDbReady, jb, parseProfileParam } from "../db.js";
+import { pool, isDbReady, jb, parseProfileParam, buildProfileFilter } from "../db.js";
 import { storeEmbedding } from "../search.js";
 import type { TaskRow, TaskInput } from "../types.js";
 
@@ -26,8 +26,11 @@ tasksRouter.get("/", async (req, res) => {
     conds.push(`project_id = $${params.length}`);
   }
   if (profiles.length > 0) {
-    params.push(profiles);
-    conds.push(`profile_ids ?| $${params.length}::text[]`);
+    const { clause, filteredProfiles } = buildProfileFilter(profiles, params.length + 1);
+    if (clause) {
+      if (filteredProfiles.length > 0) params.push(filteredProfiles);
+      conds.push(clause);
+    }
   }
   const { rows } = await pool.query<TaskRow>(
     `SELECT * FROM tasks WHERE ${conds.join(" AND ")} ORDER BY weight DESC, created_at DESC`,

@@ -5,6 +5,7 @@ export interface ProfileRow {
   name: string;
   color: string;
   is_default: boolean;
+  hidden: boolean;
 }
 
 export interface NoteRow {
@@ -72,6 +73,9 @@ export interface FileMetaRow {
   owner_id: string | null;
   stored_path: string | null;
   uploaded_at: Date;
+  profile_ids: string[];
+  extracted_text: string;
+  excerpt?: string;
 }
 
 export interface ReminderRow {

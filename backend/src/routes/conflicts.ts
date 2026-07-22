@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { pool, isDbReady, parseProfileParam } from "../db.js";
+import { pool, isDbReady, parseProfileParam, buildProfileFilter } from "../db.js";
 import type { MeetingRow, TaskRow, TimelineItem, Conflict } from "../types.js";
 
 export const conflictsRouter = Router();
@@ -49,8 +49,11 @@ conflictsRouter.get("/", async (req, res) => {
   const params: unknown[] = [];
   const conds: string[] = ["archived = false"];
   if (profiles.length > 0) {
-    params.push(profiles);
-    conds.push(`profile_ids ?| $${params.length}::text[]`);
+    const { clause, filteredProfiles } = buildProfileFilter(profiles, params.length + 1);
+    if (clause) {
+      if (filteredProfiles.length > 0) params.push(filteredProfiles);
+      conds.push(clause);
+    }
   }
   params.push(new Date(fromMs).toISOString());
   conds.push(`"end" >= $${params.length}::timestamptz`);
@@ -65,8 +68,11 @@ conflictsRouter.get("/", async (req, res) => {
   const taskParams: unknown[] = [];
   const taskConds: string[] = ["archived = false", "due_date IS NOT NULL"];
   if (profiles.length > 0) {
-    taskParams.push(profiles);
-    taskConds.push(`profile_ids ?| $${taskParams.length}::text[]`);
+    const { clause: tc, filteredProfiles: tfp } = buildProfileFilter(profiles, taskParams.length + 1);
+    if (tc) {
+      if (tfp.length > 0) taskParams.push(tfp);
+      taskConds.push(tc);
+    }
   }
   taskParams.push(new Date(fromMs).toISOString());
   taskConds.push(`due_date >= $${taskParams.length}::timestamptz`);

@@ -1,15 +1,17 @@
+import type { ReactNode } from "react";
+
 export function EmptyState({
-  emoji,
+  icon,
   title,
   hint,
 }: {
-  emoji: string;
+  icon: ReactNode;
   title: string;
   hint: string;
 }): JSX.Element {
   return (
     <div className="empty">
-      <span className="emoji">{emoji}</span>
+      <span className="empty-icon">{icon}</span>
       <p>
         <strong>{title}</strong>
       </p>

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { pool, isDbReady, parseProfileParam } from "../db.js";
+import { pool, isDbReady, parseProfileParam, buildProfileFilter } from "../db.js";
 import type { MeetingRow, TaskRow, ReminderRow, TodayData } from "../types.js";
 
 export const digestsRouter = Router();
@@ -46,8 +46,11 @@ digestsRouter.get("/week", async (req, res) => {
     const mParams: unknown[] = [start, end];
     let mCond = "\"start\" >= $1 AND \"start\" < $2";
     if (profiles.length > 0) {
-      mParams.push(profiles);
-      mCond += ` AND profile_ids ?| $${mParams.length}::text[]`;
+      const { clause, filteredProfiles } = buildProfileFilter(profiles, mParams.length + 1);
+      if (clause) {
+        if (filteredProfiles.length > 0) mParams.push(filteredProfiles);
+        mCond += ` AND ${clause}`;
+      }
     }
     const { rows: meetings } = await pool.query<MeetingRow>(
       `SELECT * FROM meetings WHERE ${mCond} ORDER BY \"start\" ASC`,
@@ -56,8 +59,11 @@ digestsRouter.get("/week", async (req, res) => {
     const tParams: unknown[] = [start, end];
     let tCond = "due_date >= $1 AND due_date < $2";
     if (profiles.length > 0) {
-      tParams.push(profiles);
-      tCond += ` AND profile_ids ?| $${tParams.length}::text[]`;
+      const { clause, filteredProfiles } = buildProfileFilter(profiles, tParams.length + 1);
+      if (clause) {
+        if (filteredProfiles.length > 0) tParams.push(filteredProfiles);
+        tCond += ` AND ${clause}`;
+      }
     }
     const { rows: tasks } = await pool.query<TaskRow>(
       `SELECT * FROM tasks WHERE ${tCond} ORDER BY due_date ASC`,

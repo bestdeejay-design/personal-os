@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { pool, isDbReady, parseProfileParam } from "../db.js";
+import { pool, isDbReady, parseProfileParam, buildProfileFilter } from "../db.js";
 import type { MeetingRow, TaskRow, NoteRow, TimelineItem } from "../types.js";
 
 export const timelineRouter = Router();
@@ -95,9 +95,11 @@ timelineRouter.get("/", async (req, res) => {
   const toMs = req.query.to ? new Date(req.query.to as string).getTime() : now + 30 * 86400000;
   const profiles = parseProfileParam(req.query.profile);
 
-  const profileCond = (params: unknown[]): string => {
-    params.push(profiles);
-    return `profile_ids ?| $${params.length}::text[]`;
+  const profileCond = (params: unknown[]): string | null => {
+    const { clause, filteredProfiles } = buildProfileFilter(profiles, params.length + 1);
+    if (!clause) return null;
+    if (filteredProfiles.length > 0) params.push(filteredProfiles);
+    return clause;
   };
 
   try {
@@ -109,7 +111,10 @@ timelineRouter.get("/", async (req, res) => {
   mParams.push(new Date(toMs).toISOString());
   meetingConds.push(`("end" > $${mParams.length + 1}::timestamptz OR recurrence IS NOT NULL)`);
   mParams.push(new Date(fromMs).toISOString());
-  if (profiles.length > 0) meetingConds.push(profileCond(mParams));
+  if (profiles.length > 0) {
+    const pc = profileCond(mParams);
+    if (pc) meetingConds.push(pc);
+  }
   const { rows: meetingRows } = await pool.query<MeetingRow>(
     `SELECT * FROM meetings WHERE ${meetingConds.join(" AND ")}`,
     mParams
@@ -124,7 +129,10 @@ timelineRouter.get("/", async (req, res) => {
   tParams.push(new Date(toMs).toISOString());
   taskConds.push("(due_date >= $" + (tParams.length + 1) + "::timestamptz OR recurrence IS NOT NULL)");
   tParams.push(new Date(fromMs).toISOString());
-  if (profiles.length > 0) taskConds.push(profileCond(tParams));
+  if (profiles.length > 0) {
+    const pc = profileCond(tParams);
+    if (pc) taskConds.push(pc);
+  }
   const { rows: taskRows } = await pool.query<TaskRow>(
     `SELECT * FROM tasks WHERE ${taskConds.join(" AND ")}`,
     tParams
@@ -139,7 +147,10 @@ timelineRouter.get("/", async (req, res) => {
   ];
   nParams.push(new Date(fromMs).toISOString());
   nParams.push(new Date(toMs).toISOString());
-  if (profiles.length > 0) noteConds.push(profileCond(nParams));
+  if (profiles.length > 0) {
+    const pc = profileCond(nParams);
+    if (pc) noteConds.push(pc);
+  }
   const { rows: noteRows } = await pool.query<NoteRow>(
     `SELECT * FROM notes WHERE ${noteConds.join(" AND ")}`,
     nParams

@@ -71,6 +71,20 @@ export function createProfile(input: CreateProfileInput): Promise<Profile> {
   });
 }
 
+export function updateProfile(id: string, input: Partial<CreateProfileInput & { hidden: boolean }>): Promise<Profile> {
+  return request<Profile>(`/api/profiles/${id}`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteProfile(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/api/profiles/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // ---- Notes ----
 export function getNotes(
   profile?: string[],
@@ -165,6 +179,27 @@ export function createProject(input: {
     headers: JSON_HEADERS,
     body: JSON.stringify(input),
   });
+}
+
+export function updateProject(id: string, patch: Partial<Project>): Promise<Project> {
+  return request<Project>(`/api/projects/${id}`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteProject(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/api/projects/${id}`, { method: "DELETE" });
+}
+
+export function getProjectItems(id: string): Promise<{
+  notes: Note[];
+  tasks: Task[];
+  meetings: Meeting[];
+  files: FileMeta[];
+}> {
+  return request(`/api/projects/${id}/items`);
 }
 
 // ---- Calendar ----
@@ -293,19 +328,22 @@ export function search(q: string): Promise<SearchResults> {
 }
 
 // ---- Files ----
-export function getFiles(): Promise<FileMeta[]> {
-  return request<FileMeta[]>("/api/files");
+export function getFiles(profile?: string[]): Promise<FileMeta[]> {
+  const query = buildQuery({ profile: profile ?? [] });
+  return request<FileMeta[]>(`/api/files${query}`);
 }
 
 export async function uploadFile(
   file: File,
   ownerType?: string,
   ownerId?: string,
+  profileIds?: string[],
 ): Promise<FileMeta> {
   const form = new FormData();
   form.append("file", file);
   if (ownerType) form.append("owner_type", ownerType);
   if (ownerId) form.append("owner_id", ownerId);
+  if (profileIds && profileIds.length > 0) form.append("profile_ids", profileIds.join(","));
   const res = await fetch("/api/files", { method: "POST", body: form });
   if (!res.ok) {
     let message = `Upload failed (${res.status})`;
@@ -318,6 +356,14 @@ export async function uploadFile(
     throw new Error(message);
   }
   return (await res.json()) as FileMeta;
+}
+
+export function updateFileMeta(id: string, data: Partial<{ filename: string; profile_ids: string[]; owner_type: string; owner_id: string }>): Promise<FileMeta> {
+  return request<FileMeta>(`/api/files/${id}`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(data),
+  });
 }
 
 // ---- Settings ----

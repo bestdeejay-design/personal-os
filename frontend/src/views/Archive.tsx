@@ -11,7 +11,8 @@ import {
   updateNote,
   updateTask,
 } from "../api";
-import { useProfiles } from "../ProfilesContext";
+import { useProfiles, isUnsorted } from "../ProfilesContext";
+import { useLocale } from "../locales";
 import "./Archive.css";
 
 interface ArchiveProps {
@@ -27,8 +28,16 @@ function ItemChips({
   colorOf: (id: string) => string;
   nameOf: (id: string) => string;
 }): JSX.Element {
+  const { t } = useLocale();
   if (ids.length === 0) {
     return <span className="archive-empty-chips">—</span>;
+  }
+  if (isUnsorted(ids)) {
+    return (
+      <div className="chips-row">
+        <span className="chip unsorted-badge">{t("common.unsorted")}</span>
+      </div>
+    );
   }
   return (
     <div className="chips-row">
@@ -61,6 +70,7 @@ function ArchiveRow({
   colorOf: (id: string) => string;
   nameOf: (id: string) => string;
 }): JSX.Element {
+  const { t } = useLocale();
   return (
     <li className="archive-row">
       <div className="archive-row-main">
@@ -69,10 +79,10 @@ function ArchiveRow({
       </div>
       <div className="archive-actions">
         <button type="button" className="btn secondary" onClick={onRestore}>
-          Восстановить
+          {t("archive.restore")}
         </button>
         <button type="button" className="btn danger" onClick={onPurge}>
-          Удалить навсегда
+          {t("archive.purge")}
         </button>
       </div>
     </li>
@@ -102,13 +112,14 @@ function ArchiveSection<T>({
   colorOf: (id: string) => string;
   nameOf: (id: string) => string;
 }): JSX.Element {
+  const { t } = useLocale();
   return (
     <section className="archive-section">
       <h3 className="archive-section-title">{title}</h3>
       {loading ? (
-        <p className="archive-loading">Загрузка…</p>
+        <p className="archive-loading">{t("archive.loading")}</p>
       ) : items.length === 0 ? (
-        <p className="archive-empty">Архив пуст</p>
+        <p className="archive-empty">{t("archive.empty")}</p>
       ) : (
         <ul className="archive-list">
           {items.map((item) => (
@@ -129,6 +140,7 @@ function ArchiveSection<T>({
 }
 
 export function Archive({ activeProfiles }: ArchiveProps): JSX.Element {
+  const { t } = useLocale();
   const { colorOf, nameOf } = useProfiles();
   const profileKey = activeProfiles.join(",");
   const profileArg = activeProfiles.length > 0 ? activeProfiles : undefined;
@@ -146,33 +158,33 @@ export function Archive({ activeProfiles }: ArchiveProps): JSX.Element {
     try {
       setNotes(await getNotes(profileArg, undefined, "only"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось загрузить заметки");
+      setError(e instanceof Error ? e.message : t("archive.errorLoadNotes"));
     } finally {
       setLoadingNotes(false);
     }
-  }, [profileKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profileKey, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reloadTasks = useCallback(async (): Promise<void> => {
     setLoadingTasks(true);
     try {
       setTasks(await getTasks({ profile: profileArg, archived: "only" }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось загрузить задачи");
+      setError(e instanceof Error ? e.message : t("archive.errorLoadTasks"));
     } finally {
       setLoadingTasks(false);
     }
-  }, [profileKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profileKey, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reloadMeetings = useCallback(async (): Promise<void> => {
     setLoadingMeetings(true);
     try {
       setMeetings(await getCalendar({ profile: profileArg, archived: "only" }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось загрузить встречи");
+      setError(e instanceof Error ? e.message : t("archive.errorLoadMeetings"));
     } finally {
       setLoadingMeetings(false);
     }
-  }, [profileKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profileKey, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;
@@ -193,7 +205,7 @@ export function Archive({ activeProfiles }: ArchiveProps): JSX.Element {
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Не удалось загрузить архив");
+        setError(e instanceof Error ? e.message : t("archive.errorLoad"));
       })
       .finally(() => {
         if (cancelled) return;
@@ -204,7 +216,7 @@ export function Archive({ activeProfiles }: ArchiveProps): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [profileKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profileKey, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const restoreNote = useCallback(
     async (id: string): Promise<void> => {
@@ -216,7 +228,7 @@ export function Archive({ activeProfiles }: ArchiveProps): JSX.Element {
 
   const purgeNote = useCallback(
     async (id: string): Promise<void> => {
-      if (!window.confirm("Удалить навсегда?")) return;
+      if (!window.confirm(t("archive.confirmPurge"))) return;
       await deleteNote(id);
       await reloadNotes();
     },
@@ -233,7 +245,7 @@ export function Archive({ activeProfiles }: ArchiveProps): JSX.Element {
 
   const purgeTask = useCallback(
     async (id: string): Promise<void> => {
-      if (!window.confirm("Удалить навсегда?")) return;
+      if (!window.confirm(t("archive.confirmPurge"))) return;
       await deleteTask(id);
       await reloadTasks();
     },
@@ -250,7 +262,7 @@ export function Archive({ activeProfiles }: ArchiveProps): JSX.Element {
 
   const purgeMeeting = useCallback(
     async (id: string): Promise<void> => {
-      if (!window.confirm("Удалить навсегда?")) return;
+      if (!window.confirm(t("archive.confirmPurge"))) return;
       await deleteMeeting(id);
       await reloadMeetings();
     },
@@ -259,10 +271,10 @@ export function Archive({ activeProfiles }: ArchiveProps): JSX.Element {
 
   return (
     <div className="view archive-view">
-      <h2>Архив</h2>
+      <h2>{t("archive.title")}</h2>
       {error ? <p className="archive-error">{error}</p> : null}
       <ArchiveSection
-        title="Заметки"
+        title={t("archive.sectionNotes")}
         loading={loadingNotes}
         items={notes}
         getId={(n) => n.id}
@@ -274,7 +286,7 @@ export function Archive({ activeProfiles }: ArchiveProps): JSX.Element {
         nameOf={nameOf}
       />
       <ArchiveSection
-        title="Задачи"
+        title={t("archive.sectionTasks")}
         loading={loadingTasks}
         items={tasks}
         getId={(t) => t.id}
@@ -286,7 +298,7 @@ export function Archive({ activeProfiles }: ArchiveProps): JSX.Element {
         nameOf={nameOf}
       />
       <ArchiveSection
-        title="Встречи"
+        title={t("archive.sectionMeetings")}
         loading={loadingMeetings}
         items={meetings}
         getId={(m) => m.id}

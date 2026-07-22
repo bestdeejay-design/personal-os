@@ -1,20 +1,9 @@
 import { useData } from "../useData";
 import { getAnalytics } from "../api";
 import type { Analytics, Priority } from "../types";
+import { useLocale } from "../locales";
+import { AlertTriangle, BarChart3 } from "lucide-react";
 import "./Analytics.css";
-
-const STATUS_LABELS: Record<string, string> = {
-  backlog: "Бэклог",
-  in_progress: "В работе",
-  done: "Готово",
-};
-
-const PRIORITY_LABELS: Record<Priority, string> = {
-  low: "Низкий",
-  medium: "Средний",
-  high: "Высокий",
-  critical: "Критический",
-};
 
 const PRIORITY_ORDER: Priority[] = ["low", "medium", "high", "critical"];
 
@@ -63,21 +52,35 @@ function BarRow({
 }
 
 export function Analytics({ activeProfiles }: { activeProfiles: string[] }): JSX.Element {
+  const { t } = useLocale();
   const { data, loading, error } = useData<Analytics>(
     () => getAnalytics({ profile: activeProfiles }),
     [activeProfiles.join(",")],
   );
 
+  const statusLabels: Record<string, string> = {
+    backlog: t("analytics.statusBacklog"),
+    in_progress: t("analytics.statusInProgress"),
+    done: t("analytics.statusDone"),
+  };
+
+  const priorityLabels: Record<Priority, string> = {
+    low: t("analytics.priorityLow"),
+    medium: t("analytics.priorityMedium"),
+    high: t("analytics.priorityHigh"),
+    critical: t("analytics.priorityCritical"),
+  };
+
   if (loading) {
     return (
       <div className="view">
-        <h2>Аналитика</h2>
+        <h2>{t("analytics.title")}</h2>
         <div className="analytics-skeleton">
           {Array.from({ length: 7 }).map((_, i) => (
             <div className="card analytics-skeleton-card" key={i} />
           ))}
         </div>
-        <p className="analytics-loading">Загрузка…</p>
+        <p className="analytics-loading">{t("analytics.loading")}</p>
       </div>
     );
   }
@@ -85,10 +88,10 @@ export function Analytics({ activeProfiles }: { activeProfiles: string[] }): JSX
   if (error) {
     return (
       <div className="view">
-        <h2>Аналитика</h2>
+        <h2>{t("analytics.title")}</h2>
         <div className="empty">
-          <span className="emoji">⚠️</span>
-          <p>Не удалось загрузить аналитику: {error}</p>
+          <span className="empty-icon"><AlertTriangle size={28} /></span>
+          <p>{t("analytics.errorLoad")}: {error}</p>
         </div>
       </div>
     );
@@ -97,10 +100,10 @@ export function Analytics({ activeProfiles }: { activeProfiles: string[] }): JSX
   if (!data) {
     return (
       <div className="view">
-        <h2>Аналитика</h2>
+        <h2>{t("analytics.title")}</h2>
         <div className="empty">
-          <span className="emoji">📊</span>
-          <p>Нет данных</p>
+          <span className="empty-icon"><BarChart3 size={28} /></span>
+          <p>{t("analytics.noData")}</p>
         </div>
       </div>
     );
@@ -122,18 +125,18 @@ export function Analytics({ activeProfiles }: { activeProfiles: string[] }): JSX
 
   return (
     <div className="view">
-      <h2>Аналитика</h2>
+      <h2>{t("analytics.title")}</h2>
 
       <div className="analytics-grid">
-        <MetricCard label="Всего задач" value={data.tasks_total} />
-        <MetricCard label="Выполнено" value={data.tasks_done} />
-        <MetricCard label="Просрочено" value={data.tasks_overdue} />
-        <MetricCard label="Заметки" value={data.notes_total} />
-        <MetricCard label="Встречи" value={data.meetings_total} />
-        <MetricCard label="Файлы" value={data.files_total} />
+        <MetricCard label={t("analytics.totalTasks")} value={data.tasks_total} />
+        <MetricCard label={t("analytics.done")} value={data.tasks_done} />
+        <MetricCard label={t("analytics.overdue")} value={data.tasks_overdue} />
+        <MetricCard label={t("analytics.notes")} value={data.notes_total} />
+        <MetricCard label={t("analytics.meetings")} value={data.meetings_total} />
+        <MetricCard label={t("analytics.files")} value={data.files_total} />
 
         <div className="card analytics-metric analytics-completion">
-          <div className="analytics-metric-label">Completion rate</div>
+          <div className="analytics-metric-label">{t("analytics.completionRate")}</div>
           <div className="analytics-progress-track">
             <div
               className="analytics-progress-fill"
@@ -146,14 +149,14 @@ export function Analytics({ activeProfiles }: { activeProfiles: string[] }): JSX
 
       <div className="analytics-bars">
         <div className="card analytics-bar-block">
-          <h3>По статусам</h3>
+          <h3>{t("analytics.byStatus")}</h3>
           {statusEntries.length === 0 ? (
-            <p className="muted">Нет данных</p>
+            <p className="muted">{t("analytics.noData")}</p>
           ) : (
             statusEntries.map(([status, count]) => (
               <BarRow
                 key={status}
-                label={STATUS_LABELS[status] ?? status}
+                label={statusLabels[status] ?? status}
                 count={count}
                 max={statusMax}
                 color="var(--accent)"
@@ -163,14 +166,14 @@ export function Analytics({ activeProfiles }: { activeProfiles: string[] }): JSX
         </div>
 
         <div className="card analytics-bar-block">
-          <h3>По приоритету</h3>
+          <h3>{t("analytics.byPriority")}</h3>
           {priorityEntries.length === 0 ? (
-            <p className="muted">Нет данных</p>
+            <p className="muted">{t("analytics.noData")}</p>
           ) : (
             priorityEntries.map(([priority, count]) => (
               <BarRow
                 key={priority}
-                label={PRIORITY_LABELS[priority]}
+                label={priorityLabels[priority]}
                 count={count}
                 max={priorityMax}
                 color={PRIORITY_VAR[priority]}
@@ -182,14 +185,14 @@ export function Analytics({ activeProfiles }: { activeProfiles: string[] }): JSX
 
       {perProfileEntries.length > 0 && (
         <div className="card analytics-per-profile">
-          <h3>По профилям</h3>
+          <h3>{t("analytics.byProfile")}</h3>
           <table className="analytics-table">
             <thead>
               <tr>
-                <th>Профиль</th>
-                <th>Задачи</th>
-                <th>Заметки</th>
-                <th>Встречи</th>
+                <th>{t("analytics.tableProfile")}</th>
+                <th>{t("analytics.tableTasks")}</th>
+                <th>{t("analytics.tableNotes")}</th>
+                <th>{t("analytics.tableMeetings")}</th>
               </tr>
             </thead>
             <tbody>

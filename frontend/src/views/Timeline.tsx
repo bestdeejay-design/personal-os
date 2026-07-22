@@ -1,22 +1,20 @@
 import { useMemo, useState } from "react";
 import type { Conflict, TimelineItem } from "../types";
+import { useLocale } from "../locales";
 import { getConflicts, getTimeline } from "../api";
 import { useData } from "../useData";
-import { useProfiles } from "../ProfilesContext";
+import { useProfiles, isUnsorted } from "../ProfilesContext";
+import { FileText, CheckCircle2, Calendar, AlertTriangle, CalendarDays } from "lucide-react";
 import "./Timeline.css";
 
 type RangeKey = "week" | "month" | "quarter";
 
-const RANGES: { key: RangeKey; label: string }[] = [
-  { key: "week", label: "Неделя" },
-  { key: "month", label: "Месяц" },
-  { key: "quarter", label: "Квартал" },
-];
+const RANGES: RangeKey[] = ["week", "month", "quarter"];
 
-const TYPE_ICON: Record<TimelineItem["type"], string> = {
-  note: "📝",
-  task: "✅",
-  meeting: "📅",
+const TYPE_ICON: Record<TimelineItem["type"], React.ReactNode> = {
+  note: <FileText size={14} />,
+  task: <CheckCircle2 size={14} />,
+  meeting: <Calendar size={14} />,
 };
 
 const dayFmt = new Intl.DateTimeFormat("ru-RU", {
@@ -55,6 +53,7 @@ function timeLabel(iso: string): string {
 }
 
 export function Timeline({ activeProfiles }: { activeProfiles: string[] }): JSX.Element {
+  const { t } = useLocale();
   const [range, setRange] = useState<RangeKey>("month");
   const { colorOf, nameOf } = useProfiles();
 
@@ -101,16 +100,16 @@ export function Timeline({ activeProfiles }: { activeProfiles: string[] }): JSX.
   return (
     <div className="tl-view">
       <div className="section-head">
-        <h2>Timeline</h2>
-        <div className="tl-range" role="group" aria-label="Диапазон">
-          {RANGES.map((r) => (
+        <h2>{t("timeline.title")}</h2>
+        <div className="tl-range" role="group" aria-label={t("timeline.rangeLabel")}>
+          {RANGES.map((rk) => (
             <button
-              key={r.key}
+              key={rk}
               type="button"
-              className={"tl-range-btn" + (range === r.key ? " active" : "")}
-              onClick={() => setRange(r.key)}
+              className={"tl-range-btn" + (range === rk ? " active" : "")}
+              onClick={() => setRange(rk)}
             >
-              {r.label}
+              {rk === "week" ? t("timeline.rangeWeek") : rk === "month" ? t("timeline.rangeMonth") : t("timeline.rangeQuarter")}
             </button>
           ))}
         </div>
@@ -118,22 +117,22 @@ export function Timeline({ activeProfiles }: { activeProfiles: string[] }): JSX.
 
       {conflicts.length > 0 ? (
         <div className="tl-banner" role="alert">
-          ⚠ Найдено конфликтов: {conflicts.length}
+          <AlertTriangle size={16} /> {t("timeline.conflicts", { count: String(conflicts.length) })}
         </div>
       ) : null}
 
       {loading ? (
-        <div className="spinner">Loading…</div>
+        <div className="spinner">{t("common.loading")}</div>
       ) : error ? (
         <div className="empty">
-          <span className="emoji">⚠️</span>
-          <p>Не удалось загрузить ленту</p>
+          <span className="empty-icon"><AlertTriangle size={28} /></span>
+          <p>{t("timeline.errorLoad")}</p>
           <p className="muted">{error}</p>
         </div>
       ) : items.length === 0 ? (
         <div className="empty">
-          <span className="emoji">🗓️</span>
-          <p>Нет событий в этом диапазоне</p>
+          <span className="empty-icon"><CalendarDays size={28} /></span>
+          <p>{t("timeline.empty")}</p>
         </div>
       ) : (
         <div className="tl-days">
@@ -155,26 +154,30 @@ export function Timeline({ activeProfiles }: { activeProfiles: string[] }): JSX.
                         <div className="tl-title-row">
                           <span className="tl-title">{item.title}</span>
                           {item.type === "task" && item.done ? (
-                            <span className="tl-done" title="Выполнено">
+                            <span className="tl-done" title={t("timeline.done")}>
                               ✓
                             </span>
                           ) : null}
                           {conflicted ? (
-                            <span className="tl-conflict-badge">⚠ конфликт</span>
+                            <span className="tl-conflict-badge"><AlertTriangle size={12} /> {t("timeline.conflict")}</span>
                           ) : null}
                         </div>
                         <div className="tl-meta">
                           <span className="tl-time">{timeLabel(item.start)}</span>
                           <span className="tl-chips">
-                            {item.profile_ids.map((pid) => (
-                              <span key={pid} className="tl-chip">
-                                <span
-                                  className="tl-chip-swatch"
-                                  style={{ background: colorOf(pid) }}
-                                />
-                                {nameOf(pid)}
-                              </span>
-                            ))}
+                            {isUnsorted(item.profile_ids) ? (
+                              <span className="tl-chip unsorted-badge">{t("common.unsorted")}</span>
+                            ) : (
+                              item.profile_ids.map((pid) => (
+                                <span key={pid} className="tl-chip">
+                                  <span
+                                    className="tl-chip-swatch"
+                                    style={{ background: colorOf(pid) }}
+                                  />
+                                  {nameOf(pid)}
+                                </span>
+                              ))
+                            )}
                           </span>
                         </div>
                       </div>

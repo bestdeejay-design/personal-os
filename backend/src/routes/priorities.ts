@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { pool, isDbReady, parseProfileParam } from "../db.js";
+import { pool, isDbReady, parseProfileParam, buildProfileFilter } from "../db.js";
 import type { TaskRow } from "../types.js";
 
 export const prioritiesRouter = Router();
@@ -14,8 +14,11 @@ prioritiesRouter.get("/", async (req, res) => {
   if (req.query.archived === "only") conds.push("archived = true");
   else if (req.query.archived !== "all") conds.push("archived = false");
   if (profiles.length > 0) {
-    params.push(profiles);
-    conds.push(`profile_ids ?| $${params.length}::text[]`);
+    const { clause, filteredProfiles } = buildProfileFilter(profiles, params.length + 1);
+    if (clause) {
+      if (filteredProfiles.length > 0) params.push(filteredProfiles);
+      conds.push(clause);
+    }
   }
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
   const { rows } = await pool.query<TaskRow>(

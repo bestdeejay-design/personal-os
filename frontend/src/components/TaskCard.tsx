@@ -1,54 +1,61 @@
-import type { Task } from "../types";
-import { useProfiles } from "../ProfilesContext";
+import type { Task, Project } from "../types";
+import { useProfiles, isUnsorted } from "../ProfilesContext";
 import { PriorityBadge } from "./PriorityBadge";
-
-function formatDate(iso?: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
+import { Calendar, User } from "lucide-react";
+import { useLocale } from "../locales";
+import { formatDate } from "../format";
 
 export function TaskCard({
   task,
+  projects,
+  isDragging,
   onDragStart,
   onEdit,
 }: {
   task: Task;
-  onDragStart: (id: string) => void;
+  projects: Project[];
+  isDragging?: boolean;
+  onDragStart: (id: string, e: React.PointerEvent) => void;
   onEdit?: (task: Task) => void;
 }): JSX.Element {
+  const { t } = useLocale();
   const { colorOf, nameOf } = useProfiles();
+
+  const project = task.project_id ? projects.find((p) => p.id === task.project_id) : null;
+
   return (
     <div
-      className="task-card"
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData("text/plain", task.id);
-        e.dataTransfer.effectAllowed = "move";
-        onDragStart(task.id);
-      }}
+      className={"task-card" + (isDragging ? " dragging" : "")}
+      onPointerDown={(e) => onDragStart(task.id, e)}
     >
       <h4>{task.title}</h4>
       <div className="meta">
         <PriorityBadge priority={task.priority} />
-        {task.due_date ? <span>📅 {formatDate(task.due_date)}</span> : null}
-        {task.assignee ? <span>👤 {task.assignee}</span> : null}
+        {task.due_date ? <span><Calendar size={14} /> {formatDate(task.due_date)}</span> : null}
+        {task.assignee ? <span><User size={14} /> {task.assignee}</span> : null}
       </div>
-      {task.profile_ids.length > 0 ? (
-        <div className="meta">
-          {task.profile_ids.map((id) => (
+      <div className="meta">
+        {project ? (
+          <span className="badge" style={{ background: "transparent", color: "var(--accent)" }}>
+            <span className="swatch" style={{ background: "var(--accent)" }} />
+            {project.name}
+          </span>
+        ) : null}
+        {isUnsorted(task.profile_ids) ? (
+          <span className="badge unsorted-badge">{t("common.unsorted")}</span>
+        ) : (
+          task.profile_ids.map((id) => (
             <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
               <span className="swatch" style={{ background: colorOf(id) }} />
               {nameOf(id)}
             </span>
-          ))}
-        </div>
-      ) : null}
+          ))
+        )}
+      </div>
       {onEdit ? (
         <div className="meta">
           <button type="button" className="btn ghost" onClick={() => onEdit(task)}>
-            Edit
+            {t("common.edit")}
           </button>
         </div>
       ) : null}

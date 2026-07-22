@@ -6,11 +6,11 @@ const THEME_KEY = "pos_theme";
 const ACCENT_KEY = "pos_accent";
 
 export const DEFAULT_THEME: Theme = "dark";
-export const DEFAULT_ACCENT = "#FF7A00";
+export const DEFAULT_ACCENT = "#e7890d";
 
 /** Fallback profile colors used when the backend seed is unavailable. */
 export const DEFAULT_PROFILE_COLORS: Record<string, string> = {
-  Work: "#FF7A00",
+  Work: "#e7890d",
   Home: "#2FBF71",
   Family: "#3B82F6",
   Friends: "#A855F7",

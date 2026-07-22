@@ -6,6 +6,7 @@ export interface Profile {
   name: string;
   color: string;
   is_default: boolean;
+  hidden: boolean;
 }
 
 export type Recurrence =
@@ -119,6 +120,9 @@ export interface FileMeta {
   owner_id?: string | null;
   stored_path: string;
   uploaded_at: string;
+  profile_ids: string[];
+  extracted_text?: string;
+  excerpt?: string;
 }
 
 export interface Reminder {
@@ -165,6 +169,9 @@ export interface CreateNoteInput {
   body_md: string;
   profile_ids: string[];
   tags: string[];
+  linked_project_id?: string | null;
+  linked_meeting_id?: string | null;
+  linked_task_id?: string | null;
 }
 
 export interface CreateTaskInput {

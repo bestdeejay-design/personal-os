@@ -1,11 +1,14 @@
 import { useState } from "react";
 import type { SearchResults } from "../types";
 import { search } from "../api";
-import { useProfiles } from "../ProfilesContext";
+import { useProfiles, isUnsorted } from "../ProfilesContext";
 import { PriorityBadge } from "../components/PriorityBadge";
 import { EmptyState } from "../components/EmptyState";
+import { useLocale } from "../locales";
+import { Search as SearchIcon, FileText, CheckCircle2, Paperclip, AlertTriangle, Clock, SearchX } from "lucide-react";
 
 export function Search(): JSX.Element {
+  const { t } = useLocale();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,13 +39,13 @@ export function Search(): JSX.Element {
   return (
     <div>
       <div className="section-head">
-        <h2>Search</h2>
+        <h2>{t("search.title")}</h2>
       </div>
 
       <div className="row" style={{ marginBottom: 16 }}>
         <input
           type="search"
-          placeholder="Search notes, tasks, meetings, files…"
+          placeholder={t("search.placeholder")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
@@ -51,40 +54,44 @@ export function Search(): JSX.Element {
           style={{ flex: 1, maxWidth: 480 }}
         />
         <button type="button" className="btn" onClick={() => void run()} disabled={loading}>
-          {loading ? "Searching…" : "Search"}
+          {loading ? t("search.searching") : t("search.search")}
         </button>
       </div>
 
-      {error ? <EmptyState emoji="⚠️" title="Search failed" hint={error} /> : null}
+      {error ? <EmptyState icon={<AlertTriangle size={32} />} title={t("search.failed")} hint={error} /> : null}
 
       {!results ? (
         <EmptyState
-          emoji="🔍"
-          title="Semantic search"
-          hint="Type a query to search across all your notes, tasks, meetings and files."
+          icon={<SearchIcon size={32} />}
+          title={t("search.semanticTitle")}
+          hint={t("search.semanticHint")}
         />
       ) : !hasResults ? (
         <EmptyState
-          emoji="🤔"
-          title="No results"
-          hint={`Nothing matched “${q}”. Try different words.`}
+          icon={<SearchX size={32} />}
+          title={t("search.noResults")}
+          hint={t("search.noResultsHint", { q })}
         />
       ) : (
         <div>
           {results.notes.length > 0 ? (
             <div className="search-group">
-              <h3>Notes ({results.notes.length})</h3>
+              <h3>{t("search.notes", { count: String(results.notes.length) })}</h3>
               <div className="list">
                 {results.notes.map((n) => (
                   <div key={n.id} className="list-item">
-                    <div className="title">📝 {n.title || "(untitled)"}</div>
+                    <div className="title"><FileText size={16} /> {n.title || "(untitled)"}</div>
                     <div className="meta">
-                      {n.profile_ids.map((id) => (
-                        <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
-                          <span className="swatch" style={{ background: colorOf(id) }} />
-                          {nameOf(id)}
-                        </span>
-                      ))}
+                      {isUnsorted(n.profile_ids) ? (
+                        <span className="badge unsorted-badge">Unsorted</span>
+                      ) : (
+                        n.profile_ids.map((id) => (
+                          <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
+                            <span className="swatch" style={{ background: colorOf(id) }} />
+                            {nameOf(id)}
+                          </span>
+                        ))
+                      )}
                     </div>
                   </div>
                 ))}
@@ -94,19 +101,23 @@ export function Search(): JSX.Element {
 
           {results.tasks.length > 0 ? (
             <div className="search-group">
-              <h3>Tasks ({results.tasks.length})</h3>
+              <h3>{t("search.tasks", { count: String(results.tasks.length) })}</h3>
               <div className="list">
                 {results.tasks.map((t) => (
                   <div key={t.id} className="list-item">
-                    <div className="title">✅ {t.title}</div>
+                    <div className="title"><CheckCircle2 size={16} /> {t.title}</div>
                     <div className="meta">
                       <PriorityBadge priority={t.priority} />
-                      {t.profile_ids.map((id) => (
-                        <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
-                          <span className="swatch" style={{ background: colorOf(id) }} />
-                          {nameOf(id)}
-                        </span>
-                      ))}
+                      {isUnsorted(t.profile_ids) ? (
+                        <span className="badge unsorted-badge">Unsorted</span>
+                      ) : (
+                        t.profile_ids.map((id) => (
+                          <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
+                            <span className="swatch" style={{ background: colorOf(id) }} />
+                            {nameOf(id)}
+                          </span>
+                        ))
+                      )}
                     </div>
                   </div>
                 ))}
@@ -116,19 +127,23 @@ export function Search(): JSX.Element {
 
           {results.meetings.length > 0 ? (
             <div className="search-group">
-              <h3>Meetings ({results.meetings.length})</h3>
+              <h3>{t("search.meetings", { count: String(results.meetings.length) })}</h3>
               <div className="list">
                 {results.meetings.map((m) => (
                   <div key={m.id} className="list-item">
-                    <div className="title">🕑 {m.title}</div>
+                    <div className="title"><Clock size={16} /> {m.title}</div>
                     <div className="meta">
                       <span>{new Date(m.start).toLocaleString()}</span>
-                      {m.profile_ids.map((id) => (
-                        <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
-                          <span className="swatch" style={{ background: colorOf(id) }} />
-                          {nameOf(id)}
-                        </span>
-                      ))}
+                      {isUnsorted(m.profile_ids) ? (
+                        <span className="badge unsorted-badge">Unsorted</span>
+                      ) : (
+                        m.profile_ids.map((id) => (
+                          <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
+                            <span className="swatch" style={{ background: colorOf(id) }} />
+                            {nameOf(id)}
+                          </span>
+                        ))
+                      )}
                     </div>
                   </div>
                 ))}
@@ -138,21 +153,26 @@ export function Search(): JSX.Element {
 
           {results.files.length > 0 ? (
             <div className="search-group">
-              <h3>Files ({results.files.length})</h3>
+              <h3>{t("search.files", { count: String(results.files.length) })}</h3>
               <div className="list">
                 {results.files.map((f) => (
                   <div key={f.id} className="list-item">
                     <div className="title">
-                      📎 {f.filename}
+                      <Paperclip size={16} /> {f.filename}
                       <a
                         href={`/api/files/${f.id}/download`}
                         className="btn ghost"
                         style={{ marginLeft: "auto" }}
                         download={f.filename}
                       >
-                        Download
+                        {t("search.download")}
                       </a>
                     </div>
+                    {f.excerpt ? (
+                      <div className="meta">
+                        <span className="muted" style={{ fontSize: 11, fontStyle: "italic" }}>{f.excerpt}</span>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>

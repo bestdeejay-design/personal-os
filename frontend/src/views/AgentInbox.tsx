@@ -4,28 +4,37 @@ import { dismissAllAgentMessages, getAgentInbox, respondToAgent } from "../api";
 import { useProfiles } from "../ProfilesContext";
 import { useSpeechSynthesis } from "../useSpeechSynthesis";
 import { EmptyState } from "../components/EmptyState";
+import { useLocale } from "../locales";
+import {
+  AlertTriangle,
+  AlarmClock,
+  ClipboardList,
+  MessageSquare,
+  Sparkles,
+  Clock,
+} from "lucide-react";
 
-const TRIGGER_ICONS: Record<string, string> = {
-  meeting_ended: "🕑",
-  task_no_assignee: "⚠️",
-  deadline_soon: "⏰",
-  project_plan: "📋",
-  daily_digest: "🌅",
+const TRIGGER_ICONS: Record<string, React.ReactNode> = {
+  meeting_ended: <Clock size={16} />,
+  task_no_assignee: <AlertTriangle size={16} />,
+  deadline_soon: <AlarmClock size={16} />,
+  project_plan: <ClipboardList size={16} />,
+  daily_digest: <Sparkles size={16} />,
 };
 
-function triggerIcon(triggerType: string): string {
-  return TRIGGER_ICONS[triggerType] ?? "💬";
+function triggerIcon(triggerType: string): React.ReactNode {
+  return TRIGGER_ICONS[triggerType] ?? <MessageSquare size={16} />;
 }
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: (key: string, vars?: Record<string, string> | string) => string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("inbox.justNow");
+  if (mins < 60) return t("inbox.minutesAgo", { m: String(mins) });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("inbox.hoursAgo", { h: String(hours) });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t("inbox.daysAgo", { d: String(days) });
 }
 
 export function AgentInbox({
@@ -35,6 +44,7 @@ export function AgentInbox({
   activeProfiles: string[];
   onUnreadChange?: (n: number) => void;
 }): JSX.Element {
+  const { t } = useLocale();
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,14 +102,14 @@ export function AgentInbox({
     speak(body);
   };
 
-  if (loading) return <div className="spinner">Loading inbox…</div>;
-  if (error) return <EmptyState emoji="⚠️" title="Could not load inbox" hint={error} />;
+  if (loading) return <div className="spinner">{t("inbox.loading")}</div>;
+  if (error) return <EmptyState icon={<AlertTriangle size={32} />} title={t("inbox.errorLoad")} hint={error} />;
   if (messages.length === 0) {
     return (
       <EmptyState
-        emoji="🎉"
-        title="Всё чисто — у агента нет сообщений"
-        hint="New agent messages will appear here."
+        icon={<Sparkles size={32} />}
+        title={t("inbox.emptyTitle")}
+        hint={t("inbox.emptyHint")}
       />
     );
   }
@@ -107,9 +117,9 @@ export function AgentInbox({
   return (
     <div>
       <div className="section-head">
-        <h2>Agent Inbox</h2>
+        <h2>{t("inbox.title")}</h2>
         <button type="button" className="btn ghost" onClick={handleDismissAll}>
-          Dismiss all
+          {t("inbox.dismissAll")}
         </button>
       </div>
 
@@ -119,12 +129,12 @@ export function AgentInbox({
             <div className="inbox-header">
               <span className="inbox-icon">{triggerIcon(msg.trigger_type)}</span>
               <span className="inbox-trigger">{msg.trigger_type.replace(/_/g, " ")}</span>
-              <span className="inbox-time">{relativeTime(msg.created_at)}</span>
+              <span className="inbox-time">{relativeTime(msg.created_at, t)}</span>
               <button
                 type="button"
                 className="icon-btn"
-                title="Read aloud"
-                aria-label="Read aloud"
+                title={t("inbox.readAloud")}
+                aria-label={t("inbox.readAloud")}
                 onClick={() => handleSpeak(msg.body)}
                 style={{ marginLeft: "auto", width: 28, height: 28, fontSize: 13 }}
               >
@@ -175,7 +185,7 @@ export function AgentInbox({
                 style={{ fontSize: 12, padding: "5px 10px" }}
                 onClick={() => handleRespond(msg.id, "accept")}
               >
-                Accept
+                {t("inbox.accept")}
               </button>
               <button
                 type="button"
@@ -183,7 +193,7 @@ export function AgentInbox({
                 style={{ fontSize: 12, padding: "5px 10px" }}
                 onClick={() => handleRespond(msg.id, "reject")}
               >
-                Reject
+                {t("inbox.reject")}
               </button>
               <button
                 type="button"
@@ -193,7 +203,7 @@ export function AgentInbox({
                   setReplyingId(replyingId === msg.id ? null : msg.id)
                 }
               >
-                Reply
+                {t("inbox.reply")}
               </button>
             </div>
 
@@ -203,7 +213,7 @@ export function AgentInbox({
                   rows={3}
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Type your reply…"
+                  placeholder={t("inbox.replyPlaceholder")}
                 />
                 <button
                   type="button"
@@ -212,7 +222,7 @@ export function AgentInbox({
                   disabled={!replyText.trim()}
                   onClick={() => handleRespond(msg.id, "reply", replyText)}
                 >
-                  Send reply
+                  {t("inbox.sendReply")}
                 </button>
               </div>
             ) : null}

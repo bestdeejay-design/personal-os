@@ -1,16 +1,24 @@
 import { useMemo, useState } from "react";
+import { useLocale } from "../locales";
+import { formatTime, formatDateTime, getWeekStart } from "../format";
 import type { Meeting, Profile, Project, Recurrence } from "../types";
 import {
   createMeeting,
+  createNote,
+  deleteMeeting,
   downloadMeetingIcs,
   getCalendar,
   getProjects,
+  updateMeeting,
 } from "../api";
 import { useData } from "../useData";
 import { useProfiles } from "../ProfilesContext";
+import { AlertTriangle, Calendar as CalendarIcon, Clock, CalendarDays, MapPin } from "lucide-react";
 import { ProfileChips } from "../components/ProfileChips";
 import { Modal } from "../components/Modal";
 import { EmptyState } from "../components/EmptyState";
+import { isUnsorted } from "../ProfilesContext";
+import { useToast } from "../components/Toast";
 
 function toLocalInput(iso: string): string {
   const d = new Date(iso);
@@ -30,10 +38,11 @@ function RecurrenceControl({
   value: RecurrenceRule;
   onChange: (r: RecurrenceRule) => void;
 }): JSX.Element {
+  const { t } = useLocale();
   return (
     <div className="row">
       <div className="field" style={{ flex: 1 }}>
-        <label>интервал</label>
+        <label>{t("calendar.recurrenceInterval")}</label>
         <input
           type="number"
           min={1}
@@ -42,7 +51,7 @@ function RecurrenceControl({
         />
       </div>
       <div className="field" style={{ flex: 1 }}>
-        <label>до (until)</label>
+        <label>{t("calendar.recurrenceUntil")}</label>
         <input
           type="date"
           value={value.until ? value.until.slice(0, 10) : ""}
@@ -68,6 +77,7 @@ interface EventFormState {
   notes_md: string;
   location: string;
   recurrence: Recurrence;
+  _invalidCount: number;
 }
 
 const EMPTY_FORM: EventFormState = {
@@ -80,14 +90,17 @@ const EMPTY_FORM: EventFormState = {
   notes_md: "",
   location: "",
   recurrence: null,
+  _invalidCount: 0,
 };
 
 export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.Element {
+  const { t } = useLocale();
   const [mode, setMode] = useState<"day" | "week">("day");
   const [day, setDay] = useState<string>(new Date().toISOString().slice(0, 10));
   const [form, setForm] = useState<EventFormState | null>(null);
   const [saving, setSaving] = useState(false);
   const { profiles, colorOf, nameOf } = useProfiles();
+  const validProfileIds = useMemo(() => new Set(profiles.map((p) => p.id)), [profiles]);
 
   const from = useMemo(() => {
     const d = new Date();
@@ -116,8 +129,7 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
 
   const weekDays = useMemo(() => {
     const days: { key: string; label: string; items: Meeting[] }[] = [];
-    const base = new Date();
-    base.setHours(0, 0, 0, 0);
+    const base = getWeekStart();
     for (let i = 0; i < 7; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
@@ -157,11 +169,27 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
     });
   };
 
+  const openEdit = (e: Meeting): void => {
+    setForm({
+      id: e.id,
+      title: e.title,
+      start: toLocalInput(e.start),
+      end: toLocalInput(e.end),
+      all_day: e.all_day,
+      profile_ids: e.profile_ids.filter((id) => validProfileIds.has(id)),
+      linked_project_id: e.linked_project_id ?? "",
+      notes_md: e.notes_md ?? "",
+      location: e.location ?? "",
+      recurrence: e.recurrence ?? null,
+      _invalidCount: e.profile_ids.length - e.profile_ids.filter((id) => validProfileIds.has(id)).length,
+    });
+  };
+
   const submit = async (): Promise<void> => {
     if (!form) return;
     setSaving(true);
     try {
-      await createMeeting({
+      const payload = {
         title: form.title,
         start: new Date(form.start).toISOString(),
         end: new Date(form.end).toISOString(),
@@ -171,7 +199,12 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
         notes_md: form.notes_md,
         location: form.location || null,
         recurrence: form.recurrence,
-      });
+      };
+      if (form.id) {
+        await updateMeeting(form.id, payload);
+      } else {
+        await createMeeting(payload);
+      }
       setForm(null);
       reload();
     } finally {
@@ -179,10 +212,15 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
     }
   };
 
+  const remove = async (id: string): Promise<void> => {
+    await deleteMeeting(id);
+    reload();
+  };
+
   return (
     <div>
       <div className="section-head">
-        <h2>Calendar</h2>
+        <h2>{t("calendar.title")}</h2>
         <div className="row">
           <div className="chips-row">
             <button
@@ -191,7 +229,7 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
               style={{ ["--chip-color" as string]: "var(--accent)" }}
               onClick={() => setMode("day")}
             >
-              Day
+              {t("calendar.day")}
             </button>
             <button
               type="button"
@@ -199,11 +237,11 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
               style={{ ["--chip-color" as string]: "var(--accent)" }}
               onClick={() => setMode("week")}
             >
-              Week
+              {t("calendar.week")}
             </button>
           </div>
           <button type="button" className="btn" onClick={openCreate}>
-            + New event
+            + {t("calendar.new")}
           </button>
         </div>
       </div>
@@ -215,20 +253,23 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
       ) : null}
 
       {loading ? (
-        <div className="spinner">Loading…</div>
+        <div className="spinner">{t("common.loading")}</div>
       ) : error ? (
-        <EmptyState emoji="⚠️" title="Could not load calendar" hint={error} />
+        <EmptyState icon={<AlertTriangle size={32} />} title={t("calendar.errorLoad")} hint={error} />
       ) : mode === "day" ? (
         dayEvents.length === 0 ? (
           <EmptyState
-            emoji="📅"
-            title="Nothing scheduled"
-            hint="No events for this day. Create an event to get started."
+            icon={<CalendarIcon size={32} />}
+            title={t("calendar.nothing")}
+            hint={t("calendar.nothingHint")}
           />
         ) : (
           <EventList
             events={dayEvents}
             onDownload={downloadIcs}
+            onEdit={openEdit}
+            onDelete={remove}
+            onReload={reload}
             colorOf={colorOf}
             nameOf={nameOf}
           />
@@ -239,12 +280,15 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
             <h3>{d.label}</h3>
             {d.items.length === 0 ? (
               <span className="muted" style={{ fontSize: 12 }}>
-                — free —
+                {t("calendar.free")}
               </span>
             ) : (
               <EventList
                 events={d.items}
                 onDownload={downloadIcs}
+                onEdit={openEdit}
+                onDelete={remove}
+                onReload={reload}
                 colorOf={colorOf}
                 nameOf={nameOf}
               />
@@ -271,41 +315,81 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
 function EventList({
   events,
   onDownload,
+  onEdit,
+  onDelete,
+  onReload,
   colorOf,
   nameOf,
 }: {
   events: Meeting[];
   onDownload: (id: string, title: string) => void;
+  onEdit?: (e: Meeting) => void;
+  onDelete?: (id: string) => void;
+  onReload?: () => void;
   colorOf: (id: string) => string;
   nameOf: (id: string) => string;
 }): JSX.Element {
+  const { t } = useLocale();
+  const toast = useToast();
   return (
     <div className="list">
       {events.map((e) => (
         <div key={e.id} className="list-item">
           <div className="title">
-            {e.all_day ? "🌐 " : "🕑 "}
+            {e.all_day ? <CalendarDays size={16} /> : <Clock size={16} />}{' '}
             {e.title}
-            <button
-              type="button"
-              className="btn ghost"
-              style={{ marginLeft: "auto" }}
-              onClick={() => void onDownload(e.id, e.title)}
-            >
-              .ics
-            </button>
           </div>
           <div className="meta">
             <span>
-              {new Date(e.start).toLocaleString()} → {new Date(e.end).toLocaleTimeString()}
+              {formatDateTime(e.start)} → {formatTime(e.end)}
             </span>
-            {e.location ? <span>📍 {e.location}</span> : null}
-            {e.profile_ids.map((id) => (
-              <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
-                <span className="swatch" style={{ background: colorOf(id) }} />
-                {nameOf(id)}
-              </span>
-            ))}
+            {e.location ? <span><MapPin size={14} /> {e.location}</span> : null}
+            {isUnsorted(e.profile_ids) ? (
+              <span className="badge unsorted-badge">{t("common.unsorted")}</span>
+            ) : (
+              e.profile_ids.map((id) => (
+                <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
+                  <span className="swatch" style={{ background: colorOf(id) }} />
+                  {nameOf(id)}
+                </span>
+              ))
+            )}
+          </div>
+          {e.notes_md ? (
+            <div className="md-preview" style={{ marginTop: 6, fontSize: 12, padding: 8 }}>
+              {e.notes_md.slice(0, 200)}{e.notes_md.length > 200 ? "…" : ""}
+            </div>
+          ) : null}
+          <div className="row" style={{ marginTop: 6, gap: 6 }}>
+            {new Date(e.end) < new Date() ? (
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={async () => {
+                  await createNote({
+                    title: `Summary: ${e.title}`,
+                    body_md: "",
+                    profile_ids: e.profile_ids,
+                    tags: [],
+                    linked_meeting_id: e.id,
+                    linked_project_id: e.linked_project_id,
+                  });
+                  toast.push(t("calendar.summaryCreated"), "");
+                  onReload?.();
+                }}
+              >
+                {t("calendar.recordSummary")}
+              </button>
+            ) : null}
+            <button type="button" className="btn ghost" onClick={() => void onDownload(e.id, e.title)}>
+              {t("calendar.ics")}
+            </button>
+            <button type="button" className="btn ghost" onClick={() => onEdit?.(e)}>
+              {t("common.edit")}
+            </button>
+            <button type="button" className="btn ghost danger" onClick={() => onDelete?.(e.id)}>
+              {t("common.delete")}
+            </button>
           </div>
         </div>
       ))}
@@ -330,6 +414,7 @@ function EventModal({
   onCancel: () => void;
   onSave: () => void;
 }): JSX.Element {
+  const { t } = useLocale();
   const toggleProfile = (id: string): void => {
     const has = form.profile_ids.includes(id);
     onChange({
@@ -342,21 +427,21 @@ function EventModal({
 
   return (
     <Modal
-      title="New event"
+      title={form.id ? t("calendar.edit") : t("calendar.new")}
       onClose={onCancel}
       footer={
         <>
           <button type="button" className="btn ghost" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="button" className="btn" onClick={onSave} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? t("common.saving") : t("common.save")}
           </button>
         </>
       }
     >
       <div className="field">
-        <label>Title</label>
+        <label>{t("calendar.fieldTitle")}</label>
         <input
           type="text"
           value={form.title}
@@ -365,7 +450,7 @@ function EventModal({
       </div>
       <div className="row">
         <div className="field" style={{ flex: 1 }}>
-          <label>Start</label>
+          <label>{t("calendar.fieldStart")}</label>
           <input
             type="datetime-local"
             value={form.start}
@@ -373,7 +458,7 @@ function EventModal({
           />
         </div>
         <div className="field" style={{ flex: 1 }}>
-          <label>End</label>
+          <label>{t("calendar.fieldEnd")}</label>
           <input
             type="datetime-local"
             value={form.end}
@@ -389,11 +474,11 @@ function EventModal({
             checked={form.all_day}
             onChange={(e) => onChange({ ...form, all_day: e.target.checked })}
           />
-          All day
+          {t("calendar.fieldAllDay")}
         </label>
       </div>
       <div className="field">
-        <label>Location</label>
+        <label>{t("calendar.fieldLocation")}</label>
         <input
           type="text"
           value={form.location}
@@ -401,7 +486,7 @@ function EventModal({
         />
       </div>
       <div className="field">
-        <label>Повторение</label>
+        <label>{t("calendar.fieldRecurrence")}</label>
         <select
           value={form.recurrence ? form.recurrence.freq : "none"}
           onChange={(e) => {
@@ -415,11 +500,11 @@ function EventModal({
             onChange({ ...form, recurrence: { ...prev, freq } });
           }}
         >
-          <option value="none">Нет</option>
-          <option value="daily">Ежедневно</option>
-          <option value="weekly">Еженедельно</option>
-          <option value="monthly">Ежемесячно</option>
-          <option value="yearly">Ежегодно</option>
+          <option value="none">{t("calendar.recurrenceNone")}</option>
+          <option value="daily">{t("calendar.recurrenceDaily")}</option>
+          <option value="weekly">{t("calendar.recurrenceWeekly")}</option>
+          <option value="monthly">{t("calendar.recurrenceMonthly")}</option>
+          <option value="yearly">{t("calendar.recurrenceYearly")}</option>
         </select>
       </div>
       {form.recurrence ? (
@@ -429,12 +514,12 @@ function EventModal({
         />
       ) : null}
       <div className="field">
-        <label>Linked project</label>
+        <label>{t("calendar.fieldProject")}</label>
         <select
           value={form.linked_project_id}
           onChange={(e) => onChange({ ...form, linked_project_id: e.target.value })}
         >
-          <option value="">— none —</option>
+          <option value="">{t("common.none")}</option>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -443,7 +528,7 @@ function EventModal({
         </select>
       </div>
       <div className="field">
-        <label>Notes (Markdown)</label>
+        <label>{t("calendar.fieldNotes")}</label>
         <textarea
           rows={3}
           value={form.notes_md}
@@ -451,12 +536,19 @@ function EventModal({
         />
       </div>
       <div className="field">
-        <label>Profiles</label>
+        <label>{t("calendar.fieldProfiles")}</label>
         <ProfileChips
           profiles={profiles}
           selected={form.profile_ids}
           onToggle={toggleProfile}
         />
+        {form._invalidCount > 0 ? (
+          <span className="muted" style={{ fontSize: 12 }}>
+            {t("notes.profileInvalid", { count: String(form._invalidCount) })}
+          </span>
+        ) : form.profile_ids.length === 0 ? (
+          <span className="muted" style={{ fontSize: 12 }}>{t("notes.profileNone")}</span>
+        ) : null}
       </div>
     </Modal>
   );

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
-import { pool, isDbReady, jb, parseProfileParam } from "../db.js";
+import { pool, isDbReady, jb, parseProfileParam, buildProfileFilter } from "../db.js";
 import { storeEmbedding } from "../search.js";
 import { toIcs } from "../ics.js";
 import type { MeetingRow, MeetingInput } from "../types.js";
@@ -28,8 +28,11 @@ calendarRouter.get("/", async (req, res) => {
     conds.push(`"start" <= $${params.length}::timestamptz`);
   }
   if (profiles.length > 0) {
-    params.push(profiles);
-    conds.push(`profile_ids ?| $${params.length}::text[]`);
+    const { clause, filteredProfiles } = buildProfileFilter(profiles, params.length + 1);
+    if (clause) {
+      if (filteredProfiles.length > 0) params.push(filteredProfiles);
+      conds.push(clause);
+    }
   }
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
   const { rows } = await pool.query<MeetingRow>(

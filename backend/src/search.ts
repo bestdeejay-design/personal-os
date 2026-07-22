@@ -16,6 +16,7 @@ const ALLOWED_TABLES: Record<string, string> = {
   notes: "notes",
   tasks: "tasks",
   meetings: "meetings",
+  file_meta: "file_meta",
 };
 
 /** Ранжирует сущности типа entityType по косинусному сходству с queryVec. */

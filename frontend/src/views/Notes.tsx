@@ -1,13 +1,15 @@
-import { useState, useMemo } from "react";
-import type { Note, Profile } from "../types";
-import { createNote, deleteNote, getNotes, reorderNotes, updateNote } from "../api";
+import { useRef, useState, useMemo } from "react";
+import type { Note, Profile, Project } from "../types";
+import { createNote, deleteNote, getNotes, getProjects, reorderNotes, updateNote } from "../api";
 import { useData } from "../useData";
 import { useProfiles } from "../ProfilesContext";
+import { useLocale } from "../locales";
 import { ProfileChips } from "../components/ProfileChips";
 import { NoteItem } from "../components/NoteItem";
 import { Modal } from "../components/Modal";
 import { EmptyState } from "../components/EmptyState";
 import { DictationButton } from "../components/DictationButton";
+import { AlertTriangle, FileText } from "lucide-react";
 
 interface NoteFormState {
   id?: string;
@@ -15,6 +17,8 @@ interface NoteFormState {
   body_md: string;
   profile_ids: string[];
   tags: string;
+  linked_project_id: string;
+  _invalidCount: number;
 }
 
 const EMPTY_FORM: NoteFormState = {
@@ -22,13 +26,17 @@ const EMPTY_FORM: NoteFormState = {
   body_md: "",
   profile_ids: [],
   tags: "",
+  linked_project_id: "",
+  _invalidCount: 0,
 };
 
 export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Element {
+  const { t } = useLocale();
   const [q, setQ] = useState("");
   const [form, setForm] = useState<NoteFormState | null>(null);
   const [saving, setSaving] = useState(false);
   const { profiles, nameOf } = useProfiles();
+  const validProfileIds = useMemo(() => new Set(profiles.map((p) => p.id)), [profiles]);
 
   type SortMode = "manual" | "title" | "profile" | "updated";
   const [sortMode, setSortMode] = useState<SortMode>("manual");
@@ -40,14 +48,19 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
     [activeProfiles.join(","), q],
   );
 
+  const projectsState = useData<Project[]>(() => getProjects(), []);
+  const projects = projectsState.data ?? [];
+
   const openCreate = (): void => setForm({ ...EMPTY_FORM });
   const openEdit = (note: Note): void =>
     setForm({
       id: note.id,
       title: note.title,
       body_md: note.body_md,
-      profile_ids: note.profile_ids,
+      profile_ids: note.profile_ids.filter((id) => validProfileIds.has(id)),
       tags: note.tags.join(", "),
+      linked_project_id: note.linked_project_id ?? "",
+      _invalidCount: note.profile_ids.length - note.profile_ids.filter((id) => validProfileIds.has(id)).length,
     });
 
   const submit = async (): Promise<void> => {
@@ -58,12 +71,14 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
         .split(",")
         .map((t) => t.trim())
         .filter((t) => t.length > 0);
+      const linked_project_id = form.linked_project_id || null;
       if (form.id) {
         await updateNote(form.id, {
           title: form.title,
           body_md: form.body_md,
           profile_ids: form.profile_ids,
           tags,
+          linked_project_id,
         });
       } else {
         await createNote({
@@ -71,6 +86,7 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
           body_md: form.body_md,
           profile_ids: form.profile_ids,
           tags,
+          linked_project_id,
         });
       }
       setForm(null);
@@ -106,66 +122,110 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
     });
   }, [data, sortMode, nameOf]);
 
-  /* ---------- drag-and-drop handlers ---------- */
-  const handleDragStart = (e: React.DragEvent, noteId: string): void => {
-    e.dataTransfer.setData("text/plain", noteId);
-    e.dataTransfer.effectAllowed = "move";
+  const ghostRef = useRef<HTMLElement | null>(null);
+
+  const handlePointerDown = (noteId: string, e: React.PointerEvent): void => {
+    if (e.button !== 0 || sortMode !== "manual") return;
+    if ((e.target as HTMLElement).closest("button, input, textarea, select")) return;
+
     setDraggingId(noteId);
-  };
 
-  const handleDragOver = (e: React.DragEvent, idx: number): void => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverIdx(idx);
-  };
+    const el = e.currentTarget as HTMLElement;
+    const rect = el.getBoundingClientRect();
+    const ox = e.clientX - rect.left;
+    const oy = e.clientY - rect.top;
 
-  const handleDragLeave = (): void => {
-    setDragOverIdx(null);
-  };
+    const ghost = el.cloneNode(true) as HTMLElement;
+    ghost.style.position = "fixed";
+    ghost.style.left = `${e.clientX - ox}px`;
+    ghost.style.top = `${e.clientY - oy}px`;
+    ghost.style.width = `${rect.width}px`;
+    ghost.style.pointerEvents = "none";
+    ghost.style.zIndex = "9999";
+    ghost.style.opacity = "0.92";
+    ghost.style.transform = "rotate(2deg) scale(1.03)";
+    ghost.style.boxShadow = "0 12px 40px rgba(0,0,0,0.25)";
+    ghost.style.cursor = "grabbing";
+    document.body.appendChild(ghost);
+    ghostRef.current = ghost;
 
-  const handleDrop = async (e: React.DragEvent, targetIdx: number): Promise<void> => {
-    e.preventDefault();
-    const draggedId = e.dataTransfer.getData("text/plain");
-    setDraggingId(null);
-    setDragOverIdx(null);
-    if (!draggedId) return;
+    const ptrId = e.pointerId;
+    const lastTarget = { current: -1 };
 
-    const visibleIds = sortedNotes.map((n) => n.id);
-    const fromIdx = visibleIds.indexOf(draggedId);
-    if (fromIdx === -1 || fromIdx === targetIdx) return;
+    const onMove = (ev: PointerEvent): void => {
+      if (ev.pointerId !== ptrId) return;
+      const g = ghostRef.current;
+      if (g) {
+        g.style.left = `${ev.clientX - ox}px`;
+        g.style.top = `${ev.clientY - oy}px`;
+      }
+      const cards = document.querySelectorAll<HTMLElement>(".notes-grid .card");
+      let found = -1;
+      cards.forEach((card, idx) => {
+        const r = card.getBoundingClientRect();
+        if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) {
+          found = idx;
+        }
+      });
+      lastTarget.current = found;
+      setDragOverIdx(found >= 0 ? found : null);
+    };
 
-    // Reorder locally for instant feedback
-    const reordered = [...visibleIds];
-    reordered.splice(fromIdx, 1);
-    const adjustedTarget = fromIdx < targetIdx ? targetIdx - 1 : targetIdx;
-    reordered.splice(adjustedTarget, 0, draggedId);
+    const onUp = (): void => {
+      if (ghostRef.current && ghostRef.current.parentNode) {
+        ghostRef.current.parentNode.removeChild(ghostRef.current);
+      }
+      ghostRef.current = null;
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
 
-    if (reordered.every((id, i) => id === visibleIds[i])) return;
+      const targetIdx = lastTarget.current;
+      if (targetIdx < 0) {
+        setDraggingId(null);
+        setDragOverIdx(null);
+        return;
+      }
 
-    try {
-      await reorderNotes(reordered);
-      reload();
-    } catch (err) {
-      console.error("Failed to reorder notes", err);
-    }
-  };
+      const visibleIds = sortedNotes.map((n) => n.id);
+      const fromIdx = visibleIds.indexOf(noteId);
+      if (fromIdx === -1 || fromIdx === targetIdx) {
+        setDraggingId(null);
+        setDragOverIdx(null);
+        return;
+      }
 
-  const handleDragEnd = (): void => {
-    setDraggingId(null);
-    setDragOverIdx(null);
+      const reordered = [...visibleIds];
+      reordered.splice(fromIdx, 1);
+      const adjusted = fromIdx < targetIdx ? targetIdx - 1 : targetIdx;
+      reordered.splice(adjusted, 0, noteId);
+
+      if (reordered.every((id, i) => id === visibleIds[i])) {
+        setDraggingId(null);
+        setDragOverIdx(null);
+        return;
+      }
+
+      setDraggingId(null);
+      setDragOverIdx(null);
+
+      reorderNotes(reordered).then(() => reload()).catch(console.error);
+    };
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
   };
 
   const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-    { value: "manual", label: "Manual" },
-    { value: "title", label: "A–Z" },
-    { value: "profile", label: "Profile" },
-    { value: "updated", label: "Updated" },
+    { value: "manual", label: t("notes.sortManual") },
+    { value: "title", label: t("notes.sortTitle") },
+    { value: "profile", label: t("notes.sortProfile") },
+    { value: "updated", label: t("notes.sortUpdated") },
   ];
 
   return (
     <div>
       <div className="section-head">
-        <h2>Notes</h2>
+        <h2>{t("notes.title")}</h2>
         <div className="row">
           <div className="sort-control" role="group" aria-label="Sort notes by">
             {SORT_OPTIONS.map((opt) => (
@@ -181,29 +241,29 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
           </div>
           <input
             type="search"
-            placeholder="Search notes…"
+            placeholder={t("notes.search")}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             style={{ width: 240 }}
           />
           <button type="button" className="btn" onClick={openCreate}>
-            + New note
+            + {t("notes.new")}
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="spinner">Loading…</div>
+        <div className="spinner">{t("common.loading")}</div>
       ) : error ? (
-        <EmptyState emoji="⚠️" title="Could not load notes" hint={error} />
+        <EmptyState icon={<AlertTriangle size={32} />} title={t("notes.errorLoad")} hint={error} />
       ) : sortedNotes.length === 0 ? (
         <EmptyState
-          emoji="📝"
-          title={q ? "No notes match your search" : "No notes yet"}
+          icon={<FileText size={32} />}
+          title={q ? t("notes.emptySearch") : t("notes.emptyTitle")}
           hint={
             q
-              ? "Try a different keyword, or clear the search."
-              : "Create your first note to capture an idea, a meeting summary, or a task."
+              ? t("notes.emptySearchHint")
+              : t("notes.emptyHint")
           }
         />
       ) : (
@@ -212,14 +272,10 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
             <NoteItem
               key={n.id}
               note={n}
+              projects={projects}
               onEdit={openEdit}
               onDelete={remove}
-              draggable={sortMode === "manual"}
-              onDragStart={(e) => handleDragStart(e, n.id)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDrop={(e) => handleDrop(e, idx)}
-              onDragEnd={handleDragEnd}
-              onDragLeave={handleDragLeave}
+              onCardPointerDown={(_id, e) => handlePointerDown(n.id, e)}
               isDragging={draggingId === n.id}
               isDragOver={dragOverIdx === idx}
             />
@@ -231,6 +287,7 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
         <NoteModal
           form={form}
           profiles={profiles}
+          projects={projects}
           saving={saving}
           onChange={setForm}
           onCancel={() => setForm(null)}
@@ -244,6 +301,7 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
 function NoteModal({
   form,
   profiles,
+  projects,
   saving,
   onChange,
   onCancel,
@@ -251,11 +309,13 @@ function NoteModal({
 }: {
   form: NoteFormState;
   profiles: Profile[];
+  projects: Project[];
   saving: boolean;
   onChange: (f: NoteFormState) => void;
   onCancel: () => void;
   onSave: () => void;
 }): JSX.Element {
+  const { t } = useLocale();
   const toggleProfile = (id: string): void => {
     const has = form.profile_ids.includes(id);
     onChange({
@@ -268,36 +328,36 @@ function NoteModal({
 
   return (
     <Modal
-      title={form.id ? "Edit note" : "New note"}
+      title={form.id ? t("notes.edit") : t("notes.new")}
       onClose={onCancel}
       footer={
         <>
           <button type="button" className="btn ghost" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="button" className="btn" onClick={onSave} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? t("common.saving") : t("common.save")}
           </button>
         </>
       }
     >
       <div className="field">
-        <label>Title</label>
+        <label>{t("notes.fieldTitle")}</label>
         <input
           type="text"
           value={form.title}
           onChange={(e) => onChange({ ...form, title: e.target.value })}
-          placeholder="Note title"
+          placeholder={t("notes.placeholderTitle")}
         />
       </div>
       <div className="field">
-        <label>Body (Markdown)</label>
+        <label>{t("notes.fieldBody")}</label>
         <div className="textarea-row">
           <textarea
             rows={8}
             value={form.body_md}
             onChange={(e) => onChange({ ...form, body_md: e.target.value })}
-            placeholder="Write in **markdown**…"
+            placeholder={t("notes.placeholderBody")}
           />
           <DictationButton
             onTranscript={(t) =>
@@ -307,21 +367,42 @@ function NoteModal({
         </div>
       </div>
       <div className="field">
-        <label>Tags (comma separated)</label>
+        <label>{t("notes.fieldTags")}</label>
         <input
           type="text"
           value={form.tags}
           onChange={(e) => onChange({ ...form, tags: e.target.value })}
-          placeholder="idea, meeting"
+          placeholder={t("notes.placeholderTags")}
         />
       </div>
       <div className="field">
-        <label>Profiles</label>
+        <label>{t("notes.fieldProject")}</label>
+        <select
+          value={form.linked_project_id}
+          onChange={(e) => onChange({ ...form, linked_project_id: e.target.value })}
+        >
+          <option value="">{t("common.none")}</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="field">
+        <label>{t("notes.fieldProfiles")}</label>
         <ProfileChips
           profiles={profiles}
           selected={form.profile_ids}
           onToggle={toggleProfile}
         />
+        {form._invalidCount > 0 ? (
+          <span className="muted" style={{ fontSize: 12 }}>
+            {t("notes.profileInvalid", { count: String(form._invalidCount) })}
+          </span>
+        ) : form.profile_ids.length === 0 ? (
+          <span className="muted" style={{ fontSize: 12 }}>{t("notes.profileNone")}</span>
+        ) : null}
       </div>
     </Modal>
   );

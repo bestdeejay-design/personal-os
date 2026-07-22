@@ -1,0 +1,118 @@
+[
+  {
+    "type": "note",
+    "title": "Идеи для воскресного обеда",
+    "body_md": "— Паста с креветками и рукколой\n— Цезарь с курицей\n— Чизкейк на десерт",
+    "tags": ["еда", "home", "рецепты"],
+    "profile_ids": ["Home"]
+  },
+  {
+    "type": "note",
+    "title": "Заметки по TypeScript 5.8",
+    "body_md": "## Новое в TS 5.8\n\n- `using` declarations (stage 3)\n- Улучшенный `--isolatedDeclarations`\n- `const` type parameters",
+    "tags": ["typescript", "dev", "learning"],
+    "profile_ids": ["Work"]
+  },
+  {
+    "type": "note",
+    "title": "Маршрут отпуска",
+    "body_md": "**День 1:** Прилёт, заселение, прогулка по набережной\n**День 2:** Экскурсия в горы\n**День 3:** Пляж, snorkeling\n**День 4:** Музей + шопинг\n**День 5:** Обратный вылет",
+    "tags": ["travel", "family", "отпуск"],
+    "profile_ids": ["Family"]
+  },
+  {
+    "type": "note",
+    "title": "Книги для прочтения",
+    "body_md": "- «Чистый код» — Роберт Мартин\n- «Совершенный код» — Стив Макконнелл\n- «Domain-Driven Design» — Эрик Эванс\n- «System Design Interview» — Алекс Сюй",
+    "tags": ["books", "dev", "reading"],
+    "profile_ids": ["Work"]
+  },
+  {
+    "type": "note",
+    "title": "Плейлист для вечеринки",
+    "body_md": "1. Daft Punk — Get Lucky\n2. Pharrell Williams — Happy\n3. Mark Ronson — Uptown Funk\n4. Lizzo — Juice\n5. Bruno Mars — 24K Magic",
+    "tags": ["music", "fun", "playlist"],
+    "profile_ids": ["Friends"]
+  },
+  {
+    "type": "task",
+    "title": "Покрасить стены в гостиной",
+    "desc_md": "Купить краску (бежевый RAL 1013), валики, малярный скотч. Застелить пол.",
+    "status": "in_progress",
+    "priority": "high",
+    "weight": 5,
+    "profile_ids": ["Home", "Family"],
+    "project_id": null
+  },
+  {
+    "type": "task",
+    "title": "Выбрать ламинат",
+    "desc_md": "Съездить в Леруа Мерлен, посмотреть образцы. Бюджет — до 3000 руб/м².",
+    "status": "todo",
+    "priority": "medium",
+    "weight": 3,
+    "due_date": "2026-08-01T12:00:00Z",
+    "profile_ids": ["Home"],
+    "project_id": null
+  },
+  {
+    "type": "task",
+    "title": "Согласовать бюджет с CEO",
+    "desc_md": "Записаться на встречу, подготовить смету по проектам.",
+    "status": "backlog",
+    "priority": "high",
+    "weight": 4,
+    "due_date": "2026-07-28T10:00:00Z",
+    "assignee": "Иван Петров",
+    "profile_ids": ["Work"],
+    "project_id": null
+  },
+  {
+    "type": "task",
+    "title": "Написать выводы к отчёту",
+    "desc_md": "Раздел «Выводы и рекомендации» — 2-3 страницы с графиками.",
+    "status": "todo",
+    "priority": "medium",
+    "weight": 3,
+    "due_date": "2026-08-10T18:00:00Z",
+    "profile_ids": ["Work"],
+    "project_id": null
+  },
+  {
+    "type": "task",
+    "title": "Проверить почту",
+    "desc_md": "Ответить на письма от клиентов, проверить задачи в Jira.",
+    "status": "done",
+    "priority": "low",
+    "weight": 1,
+    "profile_ids": ["Work"]
+  },
+  {
+    "type": "task",
+    "title": "Купить подарок на ДР",
+    "desc_md": "Бюджет 5000 руб. Идеи: книга, настольная игра, парфюм.",
+    "status": "backlog",
+    "priority": "medium",
+    "weight": 2,
+    "due_date": "2026-08-20T12:00:00Z",
+    "profile_ids": ["Friends"]
+  },
+  {
+    "type": "task",
+    "title": "Записаться к стоматологу",
+    "desc_md": "Профилактический осмотр, запись через госуслуги.",
+    "status": "todo",
+    "priority": "medium",
+    "weight": 2,
+    "profile_ids": ["Family"]
+  },
+  {
+    "type": "task",
+    "title": "Установить полки в кладовке",
+    "desc_md": "Купить уголки и ДСП, отпилить по размеру, закрепить на стену.",
+    "status": "backlog",
+    "priority": "low",
+    "weight": 1,
+    "profile_ids": ["Home"]
+  }
+]

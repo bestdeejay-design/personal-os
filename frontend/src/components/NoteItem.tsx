@@ -1,93 +1,129 @@
 import { useState } from "react";
-import type { Note } from "../types";
-import { useProfiles } from "../ProfilesContext";
+import { Eye, X } from "lucide-react";
+import type { Note, Project } from "../types";
+import { useProfiles, isUnsorted } from "../ProfilesContext";
 import { renderMarkdown } from "../md";
+import { useLocale } from "../locales";
 
 export function NoteItem({
   note,
+  projects,
   onEdit,
   onDelete,
-  draggable,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
-  onDragLeave,
+  onCardPointerDown,
   isDragging,
   isDragOver,
 }: {
   note: Note;
+  projects: Project[];
   onEdit: (note: Note) => void;
   onDelete: (id: string) => void;
-  draggable?: boolean;
-  onDragStart?: (e: React.DragEvent<HTMLDivElement>) => void;
-  onDragOver?: (e: React.DragEvent<HTMLDivElement>) => void;
-  onDrop?: (e: React.DragEvent<HTMLDivElement>) => void;
-  onDragEnd?: (e: React.DragEvent<HTMLDivElement>) => void;
-  onDragLeave?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onCardPointerDown?: (id: string, e: React.PointerEvent) => void;
   isDragging?: boolean;
   isDragOver?: boolean;
 }): JSX.Element {
+  const [showPreview, setShowPreview] = useState(false);
+  const { t } = useLocale();
   const { colorOf, nameOf } = useProfiles();
-  const [preview, setPreview] = useState(false);
 
   const cardClass =
     "card" +
     (isDragging ? " dragging" : "") +
     (isDragOver ? " drag-over" : "");
 
+  const project = note.linked_project_id ? projects.find((p) => p.id === note.linked_project_id) : null;
+
   return (
     <div
       className={cardClass}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-      onDragLeave={onDragLeave}
+      onPointerDown={(e) => onCardPointerDown?.(note.id, e)}
+      style={{ position: "relative" }}
     >
       <div className="row between">
         <div className="row">
-          {draggable ? <span className="drag-handle">⠿</span> : null}
-          <h3>{note.title || "(untitled)"}</h3>
+          <span className="drag-handle">⠿</span>
+          <h3>{note.title || t("notes.untitled")}</h3>
         </div>
         <div className="row">
-          <button type="button" className="btn ghost" onClick={() => setPreview((p) => !p)}>
-            {preview ? "Raw" : "Preview"}
-          </button>
+          {note.body_md ? (
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => setShowPreview(true)}
+              title={t("common.preview")}
+              aria-label={t("common.preview")}
+              style={{ width: 30, height: 30 }}
+            >
+              <Eye size={15} />
+            </button>
+          ) : null}
           <button type="button" className="btn secondary" onClick={() => onEdit(note)}>
-            Edit
+            {t("common.edit")}
           </button>
           <button type="button" className="btn danger" onClick={() => onDelete(note.id)}>
-            Delete
+            {t("common.delete")}
           </button>
         </div>
       </div>
 
-      {preview ? (
+      {note.body_md ? (
         <div
           className="md-preview"
           dangerouslySetInnerHTML={{ __html: renderMarkdown(note.body_md) }}
         />
       ) : (
-        <pre className="md-preview" style={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
-          {note.body_md}
-        </pre>
+        <div className="md-preview muted" style={{ fontStyle: "italic", fontSize: 13 }}>
+          {t("notes.emptyBody")}
+        </div>
       )}
 
-      <div className="meta">
-        {note.tags.map((t) => (
-          <span key={t} className="tag">
-            #{t}
+      <div className="meta" style={{ position: "relative" }}>
+        {note.tags.map((tag) => (
+          <span key={tag} className="tag">
+            #{tag}
           </span>
         ))}
-        {note.profile_ids.map((id) => (
-          <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
-            <span className="swatch" style={{ background: colorOf(id) }} />
-            {nameOf(id)}
+        {project ? (
+          <span className="badge" style={{ background: "transparent", color: "var(--accent)" }}>
+            <span className="swatch" style={{ background: "var(--accent)" }} />
+            {project.name}
           </span>
-        ))}
+        ) : null}
+
+        {isUnsorted(note.profile_ids) ? (
+          <span className="badge unsorted-badge">{t("common.unsorted")}</span>
+        ) : (
+          note.profile_ids.map((id) => (
+            <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
+              <span className="swatch" style={{ background: colorOf(id) }} />
+              {nameOf(id)}
+            </span>
+          ))
+        )}
       </div>
+
+      {/* Preview bubble */}
+      {showPreview && note.body_md ? (
+        <div className="preview-bubble" onClick={() => setShowPreview(false)}>
+          <div className="preview-bubble-paper" onClick={(e) => e.stopPropagation()}>
+            <div className="preview-bubble-header">
+              <strong>{note.title || t("notes.untitled")}</strong>
+              <button
+                type="button"
+                className="preview-bubble-close"
+                onClick={() => setShowPreview(false)}
+                aria-label="Close preview"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div
+              className="preview-bubble-body md-preview"
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(note.body_md) }}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
