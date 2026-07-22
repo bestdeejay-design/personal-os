@@ -366,6 +366,12 @@ export function updateFileMeta(id: string, data: Partial<{ filename: string; pro
   });
 }
 
+export function deleteFileMeta(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/api/files/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // ---- Settings ----
 export function getSettings(): Promise<Setting[]> {
   return request<Setting[]>("/api/settings");

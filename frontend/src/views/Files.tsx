@@ -1,11 +1,11 @@
 import { useState, useRef } from "react";
 import type { FileMeta, Project } from "../types";
-import { getFiles, uploadFile, getProjects, updateFileMeta } from "../api";
+import { getFiles, uploadFile, getProjects, updateFileMeta, deleteFileMeta } from "../api";
 import { useData } from "../useData";
 import { useProfiles } from "../ProfilesContext";
 import { EmptyState } from "../components/EmptyState";
 import { Modal } from "../components/Modal";
-import { AlertTriangle, Paperclip, Calendar, Upload, Edit3 } from "lucide-react";
+import { AlertTriangle, Paperclip, Calendar, Upload, Edit3, Trash2 } from "lucide-react";
 import { useLocale } from "../locales";
 
 function formatSize(bytes: number): string {
@@ -89,6 +89,15 @@ export function Files({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
     } finally { setSaving(false); }
   };
 
+  const [confirmDeleteFile, setConfirmDeleteFile] = useState(false);
+  const handleDeleteFile = async (): Promise<void> => {
+    if (!editFile) return;
+    await deleteFileMeta(editFile.id);
+    setEditFile(null);
+    setConfirmDeleteFile(false);
+    reload();
+  };
+
   const files = data ?? [];
   return (
     <div>
@@ -129,6 +138,15 @@ export function Files({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
           <div className="field"><label>{t("files.file")}</label><input type="text" value={editFilename} onChange={(e) => setEditFilename(e.target.value)} /></div>
           <div className="field"><label>{t("notes.fieldProject")}</label><select value={editProjectId} onChange={(e) => setEditProjectId(e.target.value)}><option value="">{t("common.none")}</option>{projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}</select></div>
           <div className="field"><label>{t("notes.fieldProfiles")}</label><div className="chips-row">{profiles.map((p) => (<button key={p.id} type="button" className={"chip" + (editProfileIds.includes(p.id) ? " active" : "")} style={{ ["--chip-color" as string]: p.color }} onClick={() => toggleEditProfile(p.id)}><span className="swatch" style={{ background: p.color }} /> {p.name}</button>))}</div></div>
+          {confirmDeleteFile ? (
+            <div className="row" style={{ gap: 8, marginTop: 8 }}>
+              <span className="muted" style={{ fontSize: 13 }}>{t("common.confirm")}?</span>
+              <button type="button" className="btn danger" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => void handleDeleteFile()}>{t("common.delete")}</button>
+              <button type="button" className="btn ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => setConfirmDeleteFile(false)}>{t("common.cancel")}</button>
+            </div>
+          ) : (
+            <button type="button" className="btn ghost" style={{ color: "var(--danger)", fontSize: 12, marginTop: 8 }} onClick={() => setConfirmDeleteFile(true)}><Trash2 size={12} /> {t("common.delete")}</button>
+          )}
           <div className="modal-actions"><button type="button" className="btn ghost" onClick={() => setEditFile(null)} disabled={saving}>{t("common.cancel")}</button><button type="button" className="btn" onClick={() => void doEdit()} disabled={saving}>{saving ? t("common.saving") : t("common.save")}</button></div>
         </Modal>
       ) : null}

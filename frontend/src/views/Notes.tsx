@@ -144,6 +144,8 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
     ghost.style.zIndex = "9999";
     ghost.style.opacity = "0.92";
     ghost.style.transform = "rotate(2deg) scale(1.03)";
+    ghost.style.maxHeight = "120px";
+    ghost.style.overflow = "hidden";
     ghost.style.boxShadow = "0 12px 40px rgba(0,0,0,0.25)";
     ghost.style.cursor = "grabbing";
     document.body.appendChild(ghost);
@@ -274,7 +276,6 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
               note={n}
               projects={projects}
               onEdit={openEdit}
-              onDelete={remove}
               onCardPointerDown={(_id, e) => handlePointerDown(n.id, e)}
               isDragging={draggingId === n.id}
               isDragOver={dragOverIdx === idx}
@@ -292,6 +293,7 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
           onChange={setForm}
           onCancel={() => setForm(null)}
           onSave={submit}
+          onDelete={form.id ? remove : undefined}
         />
       ) : null}
     </div>
@@ -306,6 +308,7 @@ function NoteModal({
   onChange,
   onCancel,
   onSave,
+  onDelete,
 }: {
   form: NoteFormState;
   profiles: Profile[];
@@ -314,8 +317,10 @@ function NoteModal({
   onChange: (f: NoteFormState) => void;
   onCancel: () => void;
   onSave: () => void;
+  onDelete?: (id: string) => void;
 }): JSX.Element {
   const { t } = useLocale();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const toggleProfile = (id: string): void => {
     const has = form.profile_ids.includes(id);
     onChange({
@@ -404,6 +409,25 @@ function NoteModal({
           <span className="muted" style={{ fontSize: 12 }}>{t("notes.profileNone")}</span>
         ) : null}
       </div>
+      {form.id && onDelete ? (
+        <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+          {confirmDelete ? (
+            <div className="row" style={{ gap: 8, alignItems: "center" }}>
+              <span className="muted" style={{ fontSize: 13 }}>{t("common.confirm")}?</span>
+              <button type="button" className="btn danger" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => { onDelete(form.id!); setConfirmDelete(false); }}>
+                {t("common.delete")}
+              </button>
+              <button type="button" className="btn ghost" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => setConfirmDelete(false)}>
+                {t("common.cancel")}
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="btn ghost" style={{ color: "var(--danger)", fontSize: 12 }} onClick={() => setConfirmDelete(true)}>
+              {t("common.delete")}
+            </button>
+          )}
+        </div>
+      ) : null}
     </Modal>
   );
 }

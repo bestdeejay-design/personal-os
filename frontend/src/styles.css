@@ -719,12 +719,26 @@ label {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow: hidden;
 }
 
 .notes-grid .card .md-preview,
 .notes-grid .card pre.md-preview {
   max-height: 130px;
   overflow: hidden;
+  display: block;
+}
+
+.card.dragging .md-preview,
+.card.dragging pre.md-preview,
+.card.dragging {
+  max-height: 120px !important;
+  overflow: hidden !important;
+}
+
+.notes-grid .card.dragging .md-preview,
+.notes-grid .card.dragging pre.md-preview {
+  max-height: 120px;
 }
 
 .notes-grid .card.dragging {

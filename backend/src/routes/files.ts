@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, existsSync, unlinkSync } from "node:fs";
 import { pool, isDbReady, jb, parseProfileParam, buildProfileFilter } from "../db.js";
 import { storeEmbedding } from "../search.js";
 import type { FileMetaRow } from "../types.js";
@@ -11,7 +11,11 @@ mkdirSync(DATA_DIR, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, DATA_DIR),
-  filename: (_req, file, cb) => cb(null, `${randomUUID()}-${file.originalname}`),
+  filename: (_req, file, cb) => {
+    // Исправляем Mojibake: Latin-1 → UTF-8
+    const name = Buffer.from(file.originalname, "latin1").toString("utf8");
+    cb(null, `${randomUUID()}-${name}`);
+  },
 });
 const upload = multer({ storage });
 
@@ -45,17 +49,18 @@ filesRouter.post("/", upload.single("file"), async (req, res) => {
   const rawProfiles = typeof req.body?.profile_ids === "string" ? req.body.profile_ids : "";
   const profile_ids: string[] = rawProfiles ? rawProfiles.split(",").map((s: string) => s.trim()).filter(Boolean) : [];
   const id = randomUUID();
+  const cleanName = Buffer.from(f.originalname, "latin1").toString("utf8");
   const extracted = extractText(f.path, f.mimetype);
   const { rows } = await pool.query<FileMetaRow>(
     `INSERT INTO file_meta (id, filename, mime, size, owner_type, owner_id, stored_path, profile_ids, extracted_text)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9) RETURNING *`,
-    [id, f.originalname, f.mimetype, f.size, owner_type, owner_id, f.path, jb(profile_ids), extracted]
+    [id, cleanName, f.mimetype, f.size, owner_type, owner_id, f.path, jb(profile_ids), extracted]
   );
   // Индексируем для семантического поиска
   if (extracted) {
     await storeEmbedding("file", id, extracted).catch(() => {});
   } else {
-    await storeEmbedding("file", id, f.originalname).catch(() => {});
+    await storeEmbedding("file", id, cleanName).catch(() => {});
   }
   res.status(201).json(rows[0]);
 });
@@ -130,4 +135,22 @@ filesRouter.patch("/:id", async (req, res) => {
   );
   if (rows.length === 0) return res.status(404).json({ error: "file not found" });
   res.json(rows[0]);
+});
+
+filesRouter.delete("/:id", async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: "database unavailable" });
+  const { id } = req.params;
+  const { rows } = await pool.query<FileMetaRow>("SELECT * FROM file_meta WHERE id = $1", [id]);
+  if (rows.length === 0) return res.status(404).json({ error: "file not found" });
+  const f = rows[0];
+  // Удаляем файл с диска
+  if (f.stored_path && existsSync(f.stored_path)) {
+    try { unlinkSync(f.stored_path); } catch { /* файл уже мог быть удалён */ }
+  }
+  // Удаляем из БД и эмбеддингов
+  await Promise.all([
+    pool.query("DELETE FROM file_meta WHERE id = $1", [id]),
+    pool.query("DELETE FROM embeddings WHERE entity_type = 'file' AND entity_id = $1", [id]),
+  ]);
+  res.json({ ok: true });
 });

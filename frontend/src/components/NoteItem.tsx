@@ -9,7 +9,6 @@ export function NoteItem({
   note,
   projects,
   onEdit,
-  onDelete,
   onCardPointerDown,
   isDragging,
   isDragOver,
@@ -17,7 +16,6 @@ export function NoteItem({
   note: Note;
   projects: Project[];
   onEdit: (note: Note) => void;
-  onDelete: (id: string) => void;
   onCardPointerDown?: (id: string, e: React.PointerEvent) => void;
   isDragging?: boolean;
   isDragOver?: boolean;
@@ -39,33 +37,25 @@ export function NoteItem({
       onPointerDown={(e) => onCardPointerDown?.(note.id, e)}
       style={{ position: "relative" }}
     >
-      <div className="row between">
-        <div className="row">
-          <span className="drag-handle">⠿</span>
-          <h3>{note.title || t("notes.untitled")}</h3>
-        </div>
-        <div className="row">
-          {note.body_md ? (
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => setShowPreview(true)}
-              title={t("common.preview")}
-              aria-label={t("common.preview")}
-              style={{ width: 30, height: 30 }}
-            >
-              <Eye size={15} />
-            </button>
-          ) : null}
-          <button type="button" className="btn secondary" onClick={() => onEdit(note)}>
-            {t("common.edit")}
+      {/* Header: drag handle + title only */}
+      <div className="row">
+        <span className="drag-handle">⠿</span>
+        <h3 style={{ flex: 1, minWidth: 0 }}>{note.title || t("notes.untitled")}</h3>
+        {note.body_md ? (
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={(e) => { e.stopPropagation(); setShowPreview(true); }}
+            title={t("common.preview")}
+            aria-label={t("common.preview")}
+            style={{ width: 28, height: 28, flexShrink: 0 }}
+          >
+            <Eye size={14} />
           </button>
-          <button type="button" className="btn danger" onClick={() => onDelete(note.id)}>
-            {t("common.delete")}
-          </button>
-        </div>
+        ) : null}
       </div>
 
+      {/* Body */}
       {note.body_md ? (
         <div
           className="md-preview"
@@ -77,34 +67,37 @@ export function NoteItem({
         </div>
       )}
 
-      <div className="meta" style={{ position: "relative" }}>
-        {note.tags.map((tag) => (
-          <span key={tag} className="tag">
-            #{tag}
-          </span>
-        ))}
-        {project ? (
-          <span className="badge" style={{ background: "transparent", color: "var(--accent)" }}>
-            <span className="swatch" style={{ background: "var(--accent)" }} />
-            {project.name}
-          </span>
-        ) : null}
-
-        {isUnsorted(note.profile_ids) ? (
-          <span className="badge unsorted-badge">{t("common.unsorted")}</span>
-        ) : (
-          note.profile_ids.map((id) => (
-            <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
-              <span className="swatch" style={{ background: colorOf(id) }} />
-              {nameOf(id)}
+      {/* Meta + Edit row */}
+      <div className="row between" style={{ alignItems: "flex-end", gap: 8 }}>
+        <div className="meta" style={{ flex: 1, minWidth: 0 }}>
+          {note.tags.map((tag) => (
+            <span key={tag} className="tag">#{tag}</span>
+          ))}
+          {project ? (
+            <span className="badge" style={{ background: "transparent", color: "var(--accent)" }}>
+              <span className="swatch" style={{ background: "var(--accent)" }} />
+              {project.name}
             </span>
-          ))
-        )}
+          ) : null}
+          {isUnsorted(note.profile_ids) ? (
+            <span className="badge unsorted-badge">{t("common.unsorted")}</span>
+          ) : (
+            note.profile_ids.map((id) => (
+              <span key={id} className="badge" style={{ background: "transparent", color: colorOf(id) }}>
+                <span className="swatch" style={{ background: colorOf(id) }} />
+                {nameOf(id)}
+              </span>
+            ))
+          )}
+        </div>
+        <button type="button" className="btn secondary" style={{ flexShrink: 0, fontSize: 12, padding: "4px 12px" }} onClick={() => onEdit(note)}>
+          {t("common.edit")}
+        </button>
       </div>
 
-      {/* Preview bubble */}
+      {/* Preview — only ✕ closes, full text scrollable */}
       {showPreview && note.body_md ? (
-        <div className="preview-bubble" onClick={() => setShowPreview(false)}>
+        <div className="preview-bubble" style={{ cursor: "default" }}>
           <div className="preview-bubble-paper" onClick={(e) => e.stopPropagation()}>
             <div className="preview-bubble-header">
               <strong>{note.title || t("notes.untitled")}</strong>
@@ -119,6 +112,7 @@ export function NoteItem({
             </div>
             <div
               className="preview-bubble-body md-preview"
+              style={{ overflowY: "auto", maxHeight: "60vh" }}
               dangerouslySetInnerHTML={{ __html: renderMarkdown(note.body_md) }}
             />
           </div>
