@@ -7,6 +7,10 @@ import {
   type ReactNode,
 } from "react";
 import en from "./en.json";
+import ru from "./ru.json";
+import ja from "./ja.json";
+import ko from "./ko.json";
+import zh from "./zh.json";
 
 /* types */
 
@@ -56,7 +60,13 @@ function saveCustomLocales(list: LocalePack[]) {
 
 /* built-in */
 
-const BUILT_IN: LocalePack[] = [en as LocalePack];
+const BUILT_IN: LocalePack[] = [
+  en as LocalePack,
+  ru as LocalePack,
+  ja as LocalePack,
+  ko as LocalePack,
+  zh as LocalePack,
+];
 
 /* context */
 
