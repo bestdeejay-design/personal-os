@@ -1,156 +1,93 @@
 # Personal OS v0.0.13
 
-**Личный операционный центр.** Заметки, канбан-задачи, проекты, календарь,
-файлы, профили (Work / Home / Family / Friends), дайджесты дня/недели,
-агент-подсказки и семантический поиск — всё в одном месте, полностью локально.
+> [Read in Russian](./README.ru.md)
 
-> 🎯 **Для кого:** разработчики, продакт-менеджеры, фрилансеры и все, кто
-> хочет единое рабочее пространство с полным контролем над своими данными.
-> Никаких облаков, никаких подписок — только ваш компьютер.
+**Your personal command center.** Notes, kanban tasks, projects, calendar, files, profiles (Work / Home / Family / Friends), daily and weekly digests, agent suggestions, and semantic search — all in one place, fully local.
 
-## Возможности
+> 🎯 **For:** developers, product managers, freelancers, and anyone who wants a unified workspace with full control over their data. No cloud, no subscriptions — just your computer.
 
-| Раздел | Что умеет |
-|--------|-----------|
-| 📝 **Заметки** | Markdown, теги, привязка к профилям/задачам/проектам, ручная сортировка |
-| 📋 **Канбан** | Статусы backlog → todo → in_progress → done, приоритеты, вес, ранг |
-| 📅 **Календарь** | События, профильная фильтрация, ICS-экспорт, рекурренция |
-| 📁 **Проекты** | Группировка задач и заметок, статус, цель |
-| 👤 **Профили** | Work / Home / Family / Friends — полная изоляция контекстов |
-| 🔍 **Поиск** | Семантический (Ollama) + текстовый ILIKE, ед. поле поиска |
-| 🤖 **Агент** | Тональность, напоминания, дайджесты дня и недели, DND-окна |
-| 🎨 **Темы** | Тёмная / светлая, настраиваемый акцентный цвет |
-| 🖥️ **Desktop** | Tauri v2 .app — бандлит и запускает весь стек одной иконкой |
-| 📎 **Файлы** | Загрузка, привязка к сущностям |
-| ⏰ **Напоминания** | По времени, с WebSocket-пущем |
-| 📊 **Аналитика** | Распределение задач, продуктивность |
+## Features
 
-## Скриншоты
+| Section | What it does |
+|---------|-------------|
+| 📝 **Notes** | Markdown, tags, profiles/tasks/projects linking, manual sorting |
+| 📋 **Kanban** | Statuses backlog → in_progress → done, priorities, weight, rank |
+| 📅 **Calendar** | Events, profile filtering, ICS export, recurrence |
+| 📁 **Projects** | Group tasks and notes, status, goal tracking, item dashboard |
+| 👤 **Profiles** | Work / Home / Family / Friends — full context isolation, custom profiles |
+| 🔍 **Search** | Semantic (Ollama) + ILIKE full-text across all content |
+| 🤖 **Agent** | Tone, reminders, daily & weekly digests, DND windows |
+| 🎨 **Themes** | Dark / Light, customizable accent color |
+| 🖥️ **Desktop** | Tauri v2 .app — bundles and runs the whole stack as a native app |
+| 📎 **Files** | Upload, link to projects/profiles, text extraction, semantic indexing |
+| ⏰ **Reminders** | Time-based, WebSocket push |
+| 📊 **Analytics** | Task distribution, productivity stats |
 
-(добавьте скриншоты по мере развития)
+## Quick Start
 
-## Быстрый старт
+### Requirements
+- [OrbStack](https://orbstack.dev) or Docker Desktop
+- [Ollama](https://ollama.com) (optional, for RAG/agent)
 
-### Требования
-
-- [OrbStack](https://orbstack.dev) (или Docker Desktop)
-- [Ollama](https://ollama.com) (опционально, для RAG/агента)
-
-### 1. Запустить стек
-
+### 1. Launch the stack
 ```bash
-# Склонировать
 git clone https://github.com/bestdeejay-design/personal-os.git
 cd personal-os
-
-# Запустить
 docker compose up --build
-
-# Открыть
 open http://localhost:8080
 ```
 
-### 2. Заполнить демо-данными (опционально)
-
+### 2. Seed demo data (optional)
 ```bash
 bash backend/seed-demo.sh
 ```
 
-После этого в системе появятся примеры заметок, задач, событий
-календаря и приветственное сообщение агента — чтобы сразу оценить
-все возможности.
+### 3. Use it
+Switch profiles in the sidebar — data filters by context (Work, Home, Family, Friends). Try search, drag tasks between kanban columns, export events as .ics.
 
-### 3. Пользоваться
-
-Переключайте профили в боковом меню — данные фильтруются по контексту
-(Work, Home, Family, Friends). Пробуйте поиск, перетаскивайте задачи
-между колонками канбана, экспортируйте события в .ics.
-
-### Остановка
-
+### Stop
 ```bash
-docker compose down              # остановить
-docker compose down -v           # остановить + удалить все данные
+docker compose down          # stop
+docker compose down -v       # stop + delete all data
 ```
 
-### RAG (опционально)
-
-Для семантического поиска и агента нужна Ollama:
-
+### RAG (optional)
 ```bash
 ollama pull nomic-embed-text
-ollama pull qwen2.5:7b          # или minimax-m3:cloud / nemotron-3-super:cloud
+ollama pull qwen2.5:7b     # or minimax-m3:cloud / nemotron-3-super:cloud
 ```
 
-Бэкенд в контейнере достаёт Ollama через `host.docker.internal:11434`.
-
-## Desktop-приложение (macOS)
-
-Собранный .app бандлит весь стек внутри себя и запускает одной иконкой:
+## Desktop App (macOS)
 
 ```bash
 cd desktop && npm run build
 open src-tauri/target/release/bundle/macos/Personal\ OS.app
 ```
 
-При первом запуске стек извлекается в `~/Library/Application Support/`,
-дальше работает как обычное приложение. Для выхода — Cmd+Q или закрыть окно.
-
-## Технологический стек
-
+## Tech Stack
 ```
-Frontend:      React + Vite + TypeScript
-Backend:       Node.js + Express + TypeScript + PostgreSQL (pg)
-Инфра:         OrbStack / Docker Compose
-RAG:           Ollama (nomic-embed-text, qwen2.5:7b)
-Desktop:       Tauri v2 (Rust)
+Frontend:    React + Vite + TypeScript
+Backend:     Node.js + Express + TypeScript + PostgreSQL (pg)
+Infra:       OrbStack / Docker Compose
+RAG:         Ollama (nomic-embed-text, qwen2.5:7b)
+Desktop:     Tauri v2 (Rust)
 ```
 
-## Версионирование
+## Version History
 
-| Версия | Дата | Изменения |
-|--------|------|-----------|
-| 0.0.13 | июль 2026 | Редизайн карточек заметок, удаление файлов, исправление Mojibake |
-| 0.0.12 | июль 2026 | Локализация всех экранов, управление профилями, кастомные настройки, поиск по файлам |
-| 0.0.11 | июль 2026 | Настройки: стартовый экран, формат времени, день недели, колонки канбана, window size |
-| 0.0.10 | июль 2026 | Первый публичный релиз: P1–P3 функционал, Tauri shell, README, демо-данные |
+| Version | Date | Changes |
+|---------|------|---------|
+| 0.0.13 | Jul 2026 | Note card redesign, file delete, mojibake fix, CHANGELOG |
+| 0.0.12 | Jul 2026 | Full i18n, profile management, settings, file search |
+| 0.0.11 | Jul 2026 | Settings: start screen, time format, week start, kanban columns, window size |
+| 0.0.10 | Jul 2026 | Initial public release: P1–P3 features, Tauri shell, demo data |
 
-Правила:
-- **Мажорные** (+0.1.00) — новые разделы, архитектурные изменения
-- **Минорные** (+0.0.01) — новые фичи, улучшения, багфиксы
-
-Полные правила — в [AGENTS.md](./AGENTS.md).
-
-## Разработка
-
+## Development
 ```bash
-# Бэкенд
 cd backend && npm install && npx tsc
-
-# Фронтенд
 cd frontend && npm install && npm run build
-
-# Desktop
 cd desktop && npm install && npm run build
 ```
 
-## Структура репозитория
-
-```
-personal-os/
-├── AGENTS.md                # правила для AI-агентов
-├── README.md                # этот файл
-├── docker-compose.yml       # оркестрация
-├── backend/
-│   ├── src/                 # Express-сервер, routes, БД, RAG
-│   └── seed-demo.sh         # заполнение демо-данными
-├── frontend/
-│   └── src/                 # React-приложение
-└── desktop/
-    ├── src-tauri/           # Rust + Tauri v2
-    └── scripts/             # copy-stack.sh
-```
-
-## Лицензия
-
-MIT — делайте что хотите.
+## License
+MIT — do whatever you want.
