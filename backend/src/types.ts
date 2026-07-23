@@ -36,6 +36,7 @@ export interface TaskRow {
   recurrence: unknown;
   project_id: string | null;
   profile_ids: string[];
+  tags: string[];
   created_at: Date;
   archived: boolean;
 }
@@ -113,6 +114,7 @@ export interface TaskInput {
   recurrence?: unknown;
   project_id?: string | null;
   profile_ids?: string[];
+  tags?: string[];
   archived?: boolean;
 }
 
@@ -213,4 +215,78 @@ export interface ImportResult {
   notes: number;
   tasks: number;
   errors?: string[];
+}
+
+// ──────────────────────────────────────────
+// External Calendar types
+// ──────────────────────────────────────────
+
+export interface ExternalCalendarRow {
+  id: string;
+  provider: string;           // 'google' | 'yandex'
+  display_name: string;
+  email: string | null;
+  access_token: string | null;
+  refresh_token: string | null;
+  token_expires_at: Date | null;
+  sync_token: string | null;
+  caldav_url: string | null;
+  caldav_username: string | null;
+  caldav_password: string | null;
+  last_sync_at: Date | null;
+  sync_enabled: boolean;
+  created_at: Date;
+}
+
+export interface ExternalEventRow {
+  id: string;
+  calendar_id: string;
+  external_id: string;
+  title: string;
+  description: string;
+  location: string;
+  start: Date;
+  end: Date;
+  all_day: boolean;
+  status: string;
+  html_link: string | null;
+  profile_ids: string[];
+  recurrence: unknown;
+  linked_project_id: string | null;
+  linked_task_id: string | null;
+  linked_note_id: string | null;
+  linked_meeting_id: string | null;
+  synced_at: Date;
+}
+
+export interface ExternalCalendarInput {
+  provider?: string;
+  display_name?: string;
+  email?: string | null;
+  access_token?: string | null;
+  refresh_token?: string | null;
+  token_expires_at?: string | null;
+  sync_token?: string | null;
+  caldav_url?: string | null;
+  caldav_username?: string | null;
+  caldav_password?: string | null;
+  sync_enabled?: boolean;
+}
+
+export interface ExternalEventInput {
+  calendar_id?: string;
+  external_id?: string;
+  title?: string;
+  description?: string;
+  location?: string;
+  start?: string;
+  end?: string;
+  all_day?: boolean;
+  status?: string;
+  html_link?: string | null;
+  recurrence?: unknown;
+  linked_project_id?: string | null;
+  linked_task_id?: string | null;
+  linked_note_id?: string | null;
+  linked_meeting_id?: string | null;
 }

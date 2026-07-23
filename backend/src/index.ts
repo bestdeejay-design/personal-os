@@ -24,6 +24,7 @@ import { digestsRouter } from "./routes/digests.js";
 import { getTodayData } from "./routes/digests.js";
 import { agentRouter } from "./routes/agent.js";
 import { voiceRouter, handleTranscribe } from "./routes/voice.js";
+import { calendarsRouter } from "./routes/calendars.js";
 import { startAgentWorker } from "./agent-worker.js";
 import type { ReminderRow } from "./types.js";
 
@@ -54,6 +55,7 @@ app.use("/api/search", searchRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api", digestsRouter);
 app.use("/api/agent", agentRouter);
+app.use("/api/calendars", calendarsRouter);
 app.use("/api/notify", voiceRouter);
 app.post("/api/notes/transcribe", express.raw({ type: "*/*", limit: "10mb" }), handleTranscribe);
 

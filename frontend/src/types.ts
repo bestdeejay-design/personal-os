@@ -82,6 +82,7 @@ export interface Task {
   recurrence?: Recurrence;
   project_id?: string | null;
   profile_ids: string[];
+  tags: string[];
   created_at: string;
   archived: boolean;
   rank?: number;
@@ -183,6 +184,7 @@ export interface CreateTaskInput {
   due_date?: string | null;
   project_id?: string | null;
   profile_ids: string[];
+  tags?: string[];
   recurrence?: Recurrence;
 }
 

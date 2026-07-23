@@ -418,3 +418,99 @@ export function triggerSpeak(text: string): Promise<{ ok: boolean }> {
     body: JSON.stringify({ text }),
   });
 }
+
+// ---- External Calendars ----
+export interface ExternalCalendar {
+  id: string;
+  provider: string;
+  display_name: string;
+  email: string | null;
+  last_sync_at: string | null;
+  sync_enabled: boolean;
+  created_at: string;
+}
+
+export interface ExternalEvent {
+  id: string;
+  calendar_id: string;
+  external_id: string;
+  title: string;
+  description: string;
+  location: string;
+  start: string;
+  end: string;
+  all_day: boolean;
+  status: string;
+  html_link: string | null;
+  linked_project_id: string | null;
+  linked_task_id: string | null;
+  linked_note_id: string | null;
+  linked_meeting_id: string | null;
+  profile_ids: string[];
+  synced_at: string;
+}
+
+export function getCalendars(): Promise<ExternalCalendar[]> {
+  return request<ExternalCalendar[]>("/api/calendars");
+}
+
+export function createCalendar(input: {
+  display_name: string;
+  url: string;
+}): Promise<ExternalCalendar> {
+  return request<ExternalCalendar>("/api/calendars", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({
+      display_name: input.display_name,
+      caldav_url: input.url,
+    }),
+  });
+}
+
+export function updateCalendar(id: string, patch: Partial<ExternalCalendar>): Promise<ExternalCalendar> {
+  return request<ExternalCalendar>(`/api/calendars/${id}`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteCalendar(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/api/calendars/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function syncCalendar(id: string): Promise<{ ok: boolean; synced: number }> {
+  return request<{ ok: boolean; synced: number }>(`/api/calendars/sync/${id}`, {
+    method: "POST",
+  });
+}
+
+export function getCalendarEvents(
+  calendarId: string,
+  params?: { start?: string; end?: string },
+): Promise<ExternalEvent[]> {
+  const query = buildQuery({ start: params?.start, end: params?.end });
+  return request<ExternalEvent[]>(`/api/calendars/${calendarId}/events${query}`);
+}
+
+export function linkCalendarEvent(
+  eventId: string,
+  link: {
+    linked_project_id?: string | null;
+    linked_task_id?: string | null;
+    linked_note_id?: string | null;
+    linked_meeting_id?: string | null;
+    profile_ids?: string[];
+  },
+): Promise<ExternalEvent> {
+  return request<ExternalEvent>(`/api/calendars/events/${eventId}/link`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(link),
+  });
+}
+
+

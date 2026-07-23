@@ -119,6 +119,9 @@ CREATE TABLE IF NOT EXISTS tasks (
   archived boolean DEFAULT false
 );
 
+-- tasks: добавление tags (миграция 2026-07-23)
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS tags jsonb DEFAULT '[]'::jsonb;
+
 CREATE TABLE IF NOT EXISTS projects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -197,6 +200,44 @@ CREATE TABLE IF NOT EXISTS embeddings (
   entity_id uuid NOT NULL,
   vec jsonb NOT NULL,
   PRIMARY KEY (entity_type, entity_id)
+);
+
+CREATE TABLE IF NOT EXISTS external_calendars (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider text NOT NULL,           -- 'google' | 'yandex'
+  display_name text NOT NULL,
+  email text,                        -- user email for this calendar
+  access_token text,
+  refresh_token text,
+  token_expires_at timestamptz,
+  sync_token text,                   -- for incremental sync (Google)
+  caldav_url text,                   -- for Yandex CalDAV
+  caldav_username text,
+  caldav_password text,              -- app password for Yandex
+  last_sync_at timestamptz,
+  sync_enabled boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS external_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  calendar_id uuid NOT NULL REFERENCES external_calendars(id) ON DELETE CASCADE,
+  external_id text NOT NULL,         -- event ID from provider
+  title text NOT NULL,
+  description text DEFAULT '',
+  location text DEFAULT '',
+  "start" timestamptz NOT NULL,
+  "end" timestamptz NOT NULL,
+  all_day boolean DEFAULT false,
+  status text DEFAULT 'confirmed',   -- confirmed, cancelled, tentative
+  html_link text,
+  recurrence jsonb,
+  linked_project_id uuid NULL,
+  linked_task_id uuid NULL,
+  linked_note_id uuid NULL,
+  linked_meeting_id uuid NULL,       -- link to local meeting
+  synced_at timestamptz DEFAULT now(),
+  UNIQUE (calendar_id, external_id)
 );
 `;
 
@@ -310,6 +351,10 @@ export async function migrate(): Promise<void> {
           FROM ordered WHERE tasks.id = ordered.id;
         `);
       }
+      // Колонка профилей для внешних событий (добавлена постфактум).
+      await client.query(
+        `ALTER TABLE external_events ADD COLUMN IF NOT EXISTS profile_ids jsonb DEFAULT '[]'::jsonb;`
+      );
       await seedProfiles(client);
       await ensureAgentSettings(client);
       dbReady = true;

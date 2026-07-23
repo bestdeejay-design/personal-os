@@ -54,6 +54,7 @@ interface TaskFormState {
   due_date: string;
   project_id: string;
   profile_ids: string[];
+  tags: string;
   recurrence: Recurrence;
   _invalidCount: number;
 }
@@ -67,6 +68,7 @@ const EMPTY_FORM: TaskFormState = {
   due_date: "",
   project_id: "",
   profile_ids: [],
+  tags: "",
   recurrence: null,
   _invalidCount: 0,
 };
@@ -184,6 +186,7 @@ export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.El
       due_date: task.due_date ? task.due_date.slice(0, 10) : "",
       project_id: task.project_id ?? "",
       profile_ids: task.profile_ids.filter((id) => validProfileIds.has(id)),
+      tags: Array.isArray(task.tags) ? task.tags.join(", ") : "",
       recurrence: task.recurrence ?? null,
       _invalidCount: task.profile_ids.length - task.profile_ids.filter((id) => validProfileIds.has(id)).length,
     });
@@ -192,6 +195,10 @@ export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.El
     if (!form) return;
     setSaving(true);
     try {
+      const tags = form.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
       const payload = {
         title: form.title,
         desc_md: form.desc_md,
@@ -201,6 +208,7 @@ export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.El
         due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
         project_id: form.project_id || null,
         profile_ids: form.profile_ids,
+        tags,
         recurrence: form.recurrence,
       };
       if (form.id) {
@@ -335,6 +343,15 @@ function TaskModal({
           rows={4}
           value={form.desc_md}
           onChange={(e) => onChange({ ...form, desc_md: e.target.value })}
+        />
+      </div>
+      <div className="field">
+        <label>{t("notes.fieldTags")}</label>
+        <input
+          type="text"
+          value={form.tags}
+          onChange={(e) => onChange({ ...form, tags: e.target.value })}
+          placeholder={t("notes.placeholderTags")}
         />
       </div>
       <div className="row">

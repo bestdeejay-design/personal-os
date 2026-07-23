@@ -45,8 +45,8 @@ tasksRouter.post("/", async (req, res) => {
   if (!body.title) return res.status(400).json({ error: "title required" });
   const id = randomUUID();
   const { rows } = await pool.query<TaskRow>(
-    `INSERT INTO tasks (id, title, desc_md, status, priority, weight, rank, assignee, due_date, recurrence, project_id, profile_ids)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb) RETURNING *`,
+    `INSERT INTO tasks (id, title, desc_md, status, priority, weight, rank, assignee, due_date, recurrence, project_id, profile_ids, tags)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb,$13::jsonb) RETURNING *`,
     [
       id,
       body.title,
@@ -60,6 +60,7 @@ tasksRouter.post("/", async (req, res) => {
       body.recurrence === undefined || body.recurrence === null ? null : jb(body.recurrence),
       body.project_id ?? null,
       jb(body.profile_ids),
+      jb(body.tags ?? []),
     ]
   );
   const task = rows[0];
@@ -95,6 +96,10 @@ tasksRouter.patch("/:id", async (req, res) => {
     params.push(jb(body.profile_ids));
     sets.push(`profile_ids = $${params.length}::jsonb`);
   }
+  if (body.tags !== undefined) {
+    params.push(jb(body.tags));
+    sets.push(`tags = $${params.length}::jsonb`);
+  }
   if (sets.length === 0) return res.status(400).json({ error: "no fields to update" });
   params.push(id);
   const { rows } = await pool.query<TaskRow>(
@@ -106,6 +111,62 @@ tasksRouter.patch("/:id", async (req, res) => {
   if (body.title !== undefined || body.desc_md !== undefined) {
     await storeEmbedding("task", id, `${task.title}\n${task.desc_md ?? ""}`);
   }
+
+  // A3: recurring task auto-creation — если статус стал "done" и есть recurrence
+  const newStatus = body.status !== undefined ? body.status : task.status;
+  const recur = body.recurrence !== undefined ? body.recurrence : task.recurrence;
+  if (newStatus === "done" && recur && typeof recur === "object" && !Array.isArray(recur)) {
+    const r = recur as { freq: string; interval?: number; until?: string | null };
+    const oldDue = body.due_date !== undefined ? body.due_date : task.due_date;
+    const baseDate = oldDue ? new Date(oldDue) : new Date();
+    const interval = r.interval ?? 1;
+    let nextDue: Date;
+    switch (r.freq) {
+      case "daily":
+        nextDue = new Date(baseDate.getTime() + interval * 86_400_000);
+        break;
+      case "weekly":
+        nextDue = new Date(baseDate.getTime() + interval * 7 * 86_400_000);
+        break;
+      case "monthly": {
+        nextDue = new Date(baseDate);
+        nextDue.setMonth(nextDue.getMonth() + interval);
+        break;
+      }
+      case "yearly": {
+        nextDue = new Date(baseDate);
+        nextDue.setFullYear(nextDue.getFullYear() + interval);
+        break;
+      }
+      default:
+        nextDue = null as unknown as Date;
+    }
+    if (nextDue && (!r.until || nextDue.toISOString() < r.until)) {
+      const newId = randomUUID();
+      const { rows: newRows } = await pool.query<TaskRow>(
+        `INSERT INTO tasks (id, title, desc_md, status, priority, weight, rank, assignee, due_date, recurrence, project_id, profile_ids, tags)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12::jsonb,$13::jsonb) RETURNING *`,
+        [
+          newId,
+          task.title,
+          task.desc_md ?? "",
+          "backlog",
+          task.priority,
+          task.weight,
+          task.rank,
+          task.assignee,
+          nextDue.toISOString().slice(0, 10),
+          jb(recur),
+          task.project_id,
+          jb(task.profile_ids),
+          jb(task.tags ?? []),
+        ]
+      );
+      const newTask = newRows[0];
+      await storeEmbedding("task", newId, `${newTask.title}\n${newTask.desc_md ?? ""}`);
+    }
+  }
+
   res.json(task);
 });
 

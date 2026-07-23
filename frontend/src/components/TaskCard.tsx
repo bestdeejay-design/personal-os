@@ -52,6 +52,15 @@ export function TaskCard({
           ))
         )}
       </div>
+      {Array.isArray(task.tags) && task.tags.length > 0 ? (
+        <div className="meta" style={{ gap: 4 }}>
+          {task.tags.map((tag) => (
+            <span key={tag} className="badge" style={{ background: "var(--accent)", color: "var(--bg)", fontSize: 11 }}>
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
       {onEdit ? (
         <div className="meta">
           <button type="button" className="btn ghost" onClick={() => onEdit(task)}>

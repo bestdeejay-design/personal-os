@@ -69,7 +69,7 @@ searchRouter.post("/", async (req, res) => {
   }
   if (result.tasks.length === 0) {
     const { rows } = await pool.query<TaskRow>(
-      "SELECT * FROM tasks WHERE title ILIKE $1 OR desc_md ILIKE $1 LIMIT 10",
+      "SELECT * FROM tasks WHERE title ILIKE $1 OR desc_md ILIKE $1 OR tags::text ILIKE $1 LIMIT 10",
       [like]
     );
     result.tasks = rows;

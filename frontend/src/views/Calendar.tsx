@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "../locales";
 import { formatTime, formatDateTime, getWeekStart } from "../format";
 import type { Meeting, Profile, Project, Recurrence } from "../types";
@@ -10,12 +10,17 @@ import {
   getCalendar,
   getProjects,
   updateMeeting,
+  getCalendars,
+  getCalendarEvents,
+  linkCalendarEvent,
+  type ExternalEvent,
 } from "../api";
 import { useData } from "../useData";
 import { useProfiles } from "../ProfilesContext";
-import { AlertTriangle, Calendar as CalendarIcon, Clock, CalendarDays, MapPin } from "lucide-react";
+import { AlertTriangle, Calendar as CalendarIcon, Clock, CalendarDays, MapPin, Settings } from "lucide-react";
 import { ProfileChips } from "../components/ProfileChips";
 import { Modal } from "../components/Modal";
+import { CalendarSettings } from "../components/CalendarSettings";
 import { EmptyState } from "../components/EmptyState";
 import { isUnsorted } from "../ProfilesContext";
 import { useToast } from "../components/Toast";
@@ -99,6 +104,10 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
   const [day, setDay] = useState<string>(new Date().toISOString().slice(0, 10));
   const [form, setForm] = useState<EventFormState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [externalEvents, setExternalEvents] = useState<ExternalEvent[]>([]);
+  const [linkingEvent, setLinkingEvent] = useState<ExternalEvent | null>(null);
+  const [calendarSettingsOpen, setCalendarSettingsOpen] = useState(false);
+  const [calRefreshKey, setCalRefreshKey] = useState(0);
   const { profiles, colorOf, nameOf } = useProfiles();
   const validProfileIds = useMemo(() => new Set(profiles.map((p) => p.id)), [profiles]);
 
@@ -120,6 +129,20 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
   );
   const projectsState = useData<Project[]>(() => getProjects(), []);
 
+  useEffect(() => {
+    void getCalendars().then((cals) => {
+      const loadEvents = async (): Promise<void> => {
+        const all: ExternalEvent[] = [];
+        for (const cal of cals) {
+          const evts = await getCalendarEvents(cal.id, { start: from, end: to });
+          all.push(...evts);
+        }
+        setExternalEvents(all);
+      };
+      void loadEvents();
+    }).catch(() => {});
+  }, [from, to, calRefreshKey]);
+
   const events = data ?? [];
 
   const dayEvents = useMemo(
@@ -127,8 +150,13 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
     [events, day],
   );
 
-  const weekDays = useMemo(() => {
-    const days: { key: string; label: string; items: Meeting[] }[] = [];
+  const dayExternalEvents = useMemo(
+    () => externalEvents.filter((e) => dayKey(e.start) === day),
+    [externalEvents, day],
+  );
+
+  const weekExternalEvents = useMemo(() => {
+    const days: { key: string; items: ExternalEvent[] }[] = [];
     const base = getWeekStart();
     for (let i = 0; i < 7; i++) {
       const d = new Date(base);
@@ -136,16 +164,11 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
       const key = d.toISOString().slice(0, 10);
       days.push({
         key,
-        label: d.toLocaleDateString(undefined, {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        }),
-        items: events.filter((e) => dayKey(e.start) === key),
+        items: externalEvents.filter((e) => dayKey(e.start) === key),
       });
     }
     return days;
-  }, [events]);
+  }, [externalEvents]);
 
   const downloadIcs = async (id: string, title: string): Promise<void> => {
     const blob = await downloadMeetingIcs(id);
@@ -217,6 +240,23 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
     reload();
   };
 
+  const handleUpdateEvent = async (id: string, start: string, end: string): Promise<void> => {
+    await updateMeeting(id, { start, end });
+    reload();
+  };
+
+  const handleLinkEvent = async (
+    eventId: string,
+    link: { linked_project_id?: string | null; linked_task_id?: string | null; linked_note_id?: string | null; linked_meeting_id?: string | null; profile_ids?: string[] },
+  ): Promise<void> => {
+    await linkCalendarEvent(eventId, link);
+    setLinkingEvent(null);
+    const updated = externalEvents.map((e) =>
+      e.id === eventId ? { ...e, ...link } : e,
+    );
+    setExternalEvents(updated);
+  };
+
   return (
     <div>
       <div className="section-head">
@@ -243,6 +283,16 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
           <button type="button" className="btn" onClick={openCreate}>
             + {t("calendar.new")}
           </button>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setCalendarSettingsOpen(true)}
+            title={t("settings.calendars")}
+            aria-label={t("settings.calendars")}
+            style={{ marginLeft: 4 }}
+          >
+            <Settings size={18} />
+          </button>
         </div>
       </div>
 
@@ -257,34 +307,17 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
       ) : error ? (
         <EmptyState icon={<AlertTriangle size={32} />} title={t("calendar.errorLoad")} hint={error} />
       ) : mode === "day" ? (
-        dayEvents.length === 0 ? (
+        dayEvents.length === 0 && dayExternalEvents.length === 0 ? (
           <EmptyState
             icon={<CalendarIcon size={32} />}
             title={t("calendar.nothing")}
             hint={t("calendar.nothingHint")}
           />
         ) : (
-          <EventList
-            events={dayEvents}
-            onDownload={downloadIcs}
-            onEdit={openEdit}
-            onDelete={remove}
-            onReload={reload}
-            colorOf={colorOf}
-            nameOf={nameOf}
-          />
-        )
-      ) : (
-        weekDays.map((d) => (
-          <div key={d.key} className="day-group">
-            <h3>{d.label}</h3>
-            {d.items.length === 0 ? (
-              <span className="muted" style={{ fontSize: 12 }}>
-                {t("calendar.free")}
-              </span>
-            ) : (
+          <>
+            {dayEvents.length > 0 ? (
               <EventList
-                events={d.items}
+                events={dayEvents}
                 onDownload={downloadIcs}
                 onEdit={openEdit}
                 onDelete={remove}
@@ -292,9 +325,50 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
                 colorOf={colorOf}
                 nameOf={nameOf}
               />
+            ) : null}
+            {dayExternalEvents.length > 0 ? (
+              <ExternalEventList
+                events={dayExternalEvents}
+                onLink={setLinkingEvent}
+              />
+            ) : null}
+          </>
+        )
+      ) : (
+        <>
+          <WeekGrid
+            events={events}
+            onEdit={openEdit}
+            onUpdate={handleUpdateEvent}
+            colorOf={colorOf}
+          />
+          <div className="list" style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              {t("calendar.title")} — external
+            </div>
+            {weekExternalEvents.some((d) => d.items.length > 0) ? (
+              weekExternalEvents.map((d) =>
+                d.items.map((e) => (
+                  <div key={e.id} className="list-item" style={{ borderLeft: "3px solid var(--accent)", opacity: e.linked_project_id || e.linked_task_id || e.linked_note_id ? 0.7 : 1 }}>
+                    <div className="title" style={{ fontSize: 12 }}>
+                      <CalendarDays size={14} /> {e.title}
+                    </div>
+                    <div className="meta" style={{ fontSize: 11 }}>
+                      <span>{formatDateTime(e.start)} → {formatTime(e.end)}</span>
+                    </div>
+                    <div className="row" style={{ marginTop: 4, gap: 6 }}>
+                      <button type="button" className="btn ghost" onClick={() => setLinkingEvent(e)}>
+                        {e.linked_project_id || e.linked_task_id || e.linked_note_id ? t("calendar.edit") : t("calendar.fieldProject")}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )
+            ) : (
+              <span className="muted" style={{ fontSize: 12 }}>{t("calendar.free")}</span>
             )}
           </div>
-        ))
+        </>
       )}
 
       {form ? (
@@ -308,6 +382,22 @@ export function Calendar({ activeProfiles }: { activeProfiles: string[] }): JSX.
           onSave={submit}
         />
       ) : null}
+
+      {linkingEvent ? (
+        <LinkEventModal
+          event={linkingEvent}
+          profiles={profiles}
+          projects={projectsState.data ?? []}
+          onLink={handleLinkEvent}
+          onClose={() => setLinkingEvent(null)}
+        />
+      ) : null}
+
+      <CalendarSettings
+        open={calendarSettingsOpen}
+        onClose={() => setCalendarSettingsOpen(false)}
+        onCalendarsChange={() => setCalRefreshKey((k) => k + 1)}
+      />
     </div>
   );
 }
@@ -550,6 +640,381 @@ function EventModal({
           <span className="muted" style={{ fontSize: 12 }}>{t("notes.profileNone")}</span>
         ) : null}
       </div>
+    </Modal>
+  );
+}
+
+function WeekGrid({
+  events,
+  onEdit,
+  onUpdate,
+  colorOf,
+}: {
+  events: Meeting[];
+  onEdit: (e: Meeting) => void;
+  onUpdate: (id: string, start: string, end: string) => Promise<void>;
+  colorOf: (id: string) => string;
+}): JSX.Element {
+  const HOUR_HEIGHT = 48;
+  const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+  const base = getWeekStart();
+  const dayDates = DAYS.map((_, i) => {
+    const d = new Date(base);
+    d.setDate(base.getDate() + i);
+    return d;
+  });
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const getYFromTime = (iso: string): number => {
+    const d = new Date(iso);
+    return (d.getHours() + d.getMinutes() / 60) * HOUR_HEIGHT;
+  };
+
+  const getHeight = (start: string, end: string): number => {
+    const s = new Date(start).getTime();
+    const e = new Date(end).getTime();
+    return Math.max(((e - s) / (1000 * 60 * 60)) * HOUR_HEIGHT, 20);
+  };
+
+  const eventToTime = (y: number): { hour: number; minute: number } => {
+    const totalMin = (y / HOUR_HEIGHT) * 60;
+    const hour = Math.floor(totalMin / 60);
+    const rawMin = Math.round(totalMin % 60 / 15) * 15; // snap to 15
+    const minute = rawMin >= 60 ? 0 : rawMin;
+    return { hour: Math.min(Math.max(hour, 0), 23), minute };
+  };
+
+  const [dragging, setDragging] = useState<{
+    id: string;
+    dayIndex: number;
+    startY: number;
+    origStart: string;
+    origEnd: string;
+    mode: "move" | "resize";
+  } | null>(null);
+  const [dragY, setDragY] = useState(0);
+
+  const handlePointerDown = (
+    e: React.PointerEvent,
+    evt: Meeting,
+    dayIndex: number,
+    mode: "move" | "resize",
+  ): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    const cell = (e.currentTarget as HTMLElement).closest(".wg-cell") as HTMLElement;
+    if (!cell) return;
+    const cellRect = cell.getBoundingClientRect();
+    setDragging({
+      id: evt.id,
+      dayIndex,
+      startY: e.clientY - cellRect.top,
+      origStart: evt.start,
+      origEnd: evt.end,
+      mode,
+    });
+    setDragY(e.clientY - cellRect.top);
+  };
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (ev: PointerEvent): void => {
+      const cell = document.querySelector(`.wg-cell[data-day="${dragging.dayIndex}"]`) as HTMLElement;
+      if (!cell) return;
+      const rect = cell.getBoundingClientRect();
+      const y = ev.clientY - rect.top;
+      setDragY(Math.max(0, Math.min(y, 24 * HOUR_HEIGHT)));
+    };
+    const onUp = async (): Promise<void> => {
+      if (!dragging) return;
+      const cell = document.querySelector(`.wg-cell[data-day="${dragging.dayIndex}"]`) as HTMLElement;
+      if (!cell) return;
+      const evt = events.find((e) => e.id === dragging.id);
+      if (!evt) { setDragging(null); return; }
+
+      const origStart = new Date(dragging.origStart);
+      const origEnd = new Date(dragging.origEnd);
+      const duration = origEnd.getTime() - origStart.getTime();
+
+      if (dragging.mode === "move") {
+        const { hour, minute } = eventToTime(dragY);
+        const cellDay = dayDates[dragging.dayIndex];
+        if (!cellDay) { setDragging(null); return; }
+        const newStart = new Date(cellDay);
+        newStart.setHours(hour, minute, 0, 0);
+        const newEnd = new Date(newStart.getTime() + duration);
+        await onUpdate(dragging.id, newStart.toISOString(), newEnd.toISOString());
+      } else {
+        const { hour, minute } = eventToTime(dragY);
+        const cellDay = dayDates[dragging.dayIndex];
+        if (!cellDay) { setDragging(null); return; }
+        const newEnd = new Date(cellDay);
+        newEnd.setHours(hour, minute, 0, 0);
+        if (newEnd.getTime() > origStart.getTime()) {
+          await onUpdate(dragging.id, dragging.origStart, newEnd.toISOString());
+        }
+      }
+      setDragging(null);
+    };
+    const onCancel = (): void => setDragging(null);
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onCancel);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onCancel);
+    };
+  }, [dragging, events, dayDates, dragY, onUpdate]);
+
+  return (
+    <div className="week-grid">
+      {/* corner */}
+      <div className="wg-header" />
+      {dayDates.map((d, i) => (
+        <div key={i} className={"wg-header" + (d.toISOString().slice(0, 10) === todayStr ? " today" : "")}>
+          {d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" })}
+        </div>
+      ))}
+
+      {/* time rows */}
+      {HOURS.map((hour) => (
+        <div key={hour} style={{ display: "contents" }}>
+          <div className="wg-time">{String(hour).padStart(2, "0")}:00</div>
+          {dayDates.map((d, dayIdx) => {
+            const dayStr = d.toISOString().slice(0, 10);
+            const cellEvents = events.filter((evt) => dayKey(evt.start) === dayStr);
+            const isToday = dayStr === todayStr;
+            return (
+              <div
+                key={dayIdx}
+                className={"wg-cell" + (isToday ? " today-cell" : "")}
+                data-day={dayIdx}
+              >
+                {cellEvents.map((evt) => {
+                  const top = getYFromTime(evt.start);
+                  const height = getHeight(evt.start, evt.end);
+                  const isDragging = dragging?.id === evt.id;
+                  return (
+                    <div
+                      key={evt.id}
+                      className={"wg-event-block" + (isDragging ? " dragging" : "")}
+                      style={{
+                        top,
+                        height,
+                        background: evt.profile_ids.length > 0
+                          ? colorOf(evt.profile_ids[0]!)
+                          : "var(--accent)",
+                      }}
+                      onPointerDown={(e) => handlePointerDown(e, evt, dayIdx, "move")}
+                      onClick={(e) => { e.stopPropagation(); onEdit(evt); }}
+                    >
+                      <div className="wg-eb-title">{evt.title}</div>
+                      <div className="wg-eb-time">
+                        {formatTime(evt.start)} – {formatTime(evt.end)}
+                      </div>
+                      <div
+                        className="wg-resize-handle"
+                        onPointerDown={(e) => { e.stopPropagation(); handlePointerDown(e, evt, dayIdx, "resize"); }}
+                      />
+                    </div>
+                  );
+                })}
+                {dragging && dragging.dayIndex === dayIdx ? (
+                  <div className="wg-drop-indicator" style={{ top: dragY }} />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ExternalEventList({
+  events,
+  onLink,
+}: {
+  events: ExternalEvent[];
+  onLink: (e: ExternalEvent) => void;
+}): JSX.Element {
+  const { t } = useLocale();
+  return (
+    <div className="list" style={{ marginTop: 8 }}>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
+        {t("calendar.title")} — external
+      </div>
+      {events.map((e) => (
+        <div key={e.id} className="list-item" style={{ borderLeft: "3px solid var(--accent)", opacity: e.linked_project_id || e.linked_task_id || e.linked_note_id ? 0.7 : 1 }}>
+          <div className="title">
+            {e.all_day ? <CalendarDays size={16} /> : <Clock size={16} />}{' '}
+            {e.title}
+          </div>
+          <div className="meta">
+            <span>
+              {formatDateTime(e.start)} → {formatTime(e.end)}
+            </span>
+            {e.location ? <span><MapPin size={14} /> {e.location}</span> : null}
+          </div>
+          <div className="row" style={{ marginTop: 6, gap: 6 }}>
+            <button type="button" className="btn ghost" onClick={() => onLink(e)}>
+              {e.linked_project_id || e.linked_task_id || e.linked_note_id ? t("calendar.edit") : t("calendar.fieldProject")}
+            </button>
+            {e.html_link ? (
+              <a href={e.html_link} target="_blank" rel="noopener noreferrer" className="btn ghost" style={{ fontSize: 12 }}>
+                Open
+              </a>
+            ) : null}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LinkEventModal({
+  event,
+  profiles,
+  projects,
+  onLink,
+  onClose,
+}: {
+  event: ExternalEvent;
+  profiles: Profile[];
+  projects: Project[];
+  onLink: (eventId: string, link: { linked_project_id?: string | null; linked_task_id?: string | null; linked_note_id?: string | null; linked_meeting_id?: string | null; profile_ids?: string[] }) => void;
+  onClose: () => void;
+}): JSX.Element {
+  const { t } = useLocale();
+  const toast = useToast();
+  const [tab, setTab] = useState<"link" | "note">("link");
+  const [projectId, setProjectId] = useState<string>(event.linked_project_id ?? "");
+  const [profileIds, setProfileIds] = useState<string[]>([]);
+  const [noteTitle, setNoteTitle] = useState(event.title);
+  const [noteBody, setNoteBody] = useState("");
+  const [noteTags, setNoteTags] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const toggleProfile = (id: string): void => {
+    setProfileIds((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
+  };
+
+  const handleLink = (): void => {
+    void linkCalendarEvent(event.id, {
+      linked_project_id: projectId || null,
+      profile_ids: profileIds.length > 0 ? profileIds : undefined,
+    }).then(() => {
+      onLink(event.id, { linked_project_id: projectId || null, profile_ids: profileIds.length > 0 ? profileIds : undefined });
+      onClose();
+    });
+  };
+
+  const handleCreateNote = async (): Promise<void> => {
+    setSaving(true);
+    try {
+      const note = await createNote({
+        title: noteTitle,
+        body_md: noteBody,
+        profile_ids: profileIds.length > 0 ? profileIds : event.profile_ids ?? [],
+        tags: noteTags ? noteTags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        linked_project_id: projectId || null,
+        linked_meeting_id: event.id,
+      });
+      await linkCalendarEvent(event.id, { linked_note_id: note.id });
+      toast.push(t("calendar.summaryCreated"), "");
+      onLink(event.id, { linked_note_id: note.id });
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title={event.title} onClose={onClose}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <button type="button" className={"chip" + (tab === "link" ? " active" : "")} onClick={() => setTab("link")}>
+          {t("calendar.link")}
+        </button>
+        <button type="button" className={"chip" + (tab === "note" ? " active" : "")} onClick={() => setTab("note")}>
+          {t("calendar.recordSummary")}
+        </button>
+      </div>
+
+      {tab === "link" ? (
+        <div>
+          <div className="field">
+            <label>{t("calendar.fieldTitle")}</label>
+            <input type="text" value={event.title} disabled />
+          </div>
+          <div className="field">
+            <label>{t("calendar.fieldProject")}</label>
+            <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              <option value="">{t("common.none")}</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>{t("calendar.fieldProfiles")}</label>
+            <ProfileChips profiles={profiles} selected={profileIds} onToggle={toggleProfile} />
+          </div>
+          <div className="row" style={{ marginTop: 12, justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" className="btn ghost" onClick={onClose}>{t("common.cancel")}</button>
+            <button type="button" className="btn" onClick={handleLink}>{t("common.save")}</button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div className="field">
+            <label>{t("notes.fieldTitle")}</label>
+            <input type="text" value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>{t("notes.fieldBody")}</label>
+            <textarea
+              value={noteBody}
+              onChange={(e) => setNoteBody(e.target.value)}
+              rows={6}
+              style={{ width: "100%", resize: "vertical" }}
+              placeholder={t("notes.placeholderBody")}
+            />
+          </div>
+          <div className="field">
+            <label>{t("notes.fieldTags")}</label>
+            <input
+              type="text"
+              value={noteTags}
+              onChange={(e) => setNoteTags(e.target.value)}
+              placeholder={t("notes.placeholderTags")}
+            />
+          </div>
+          <div className="field">
+            <label>{t("calendar.fieldProject")}</label>
+            <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              <option value="">{t("common.none")}</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>{t("calendar.fieldProfiles")}</label>
+            <ProfileChips profiles={profiles} selected={profileIds} onToggle={toggleProfile} />
+          </div>
+          <div className="row" style={{ marginTop: 12, justifyContent: "flex-end", gap: 8 }}>
+            <button type="button" className="btn ghost" onClick={onClose}>{t("common.cancel")}</button>
+            <button type="button" className="btn" disabled={saving} onClick={() => void handleCreateNote()}>
+              {saving ? t("common.saving") : t("calendar.recordSummary")}
+            </button>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }

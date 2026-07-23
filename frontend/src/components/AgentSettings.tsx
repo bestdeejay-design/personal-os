@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sun, Moon, Download, Upload, Plus, Edit3, Trash2, Check, X } from "lucide-react";
-import { getSettings, saveSetting, getProfiles, createProfile, updateProfile, deleteProfile } from "../api";
+import {
+  getSettings, saveSetting, getProfiles, createProfile, updateProfile, deleteProfile,
+} from "../api";
 import { Modal } from "./Modal";
+import { CalendarSettings } from "./CalendarSettings";
 import { useLocale, type LocalePack } from "../locales";
 import type { Profile } from "../types";
 import type { Theme } from "../theme";
@@ -67,6 +70,8 @@ export function AgentSettings({
   const [newColor, setNewColor] = useState("#FF7A00");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
+
+  const [calendarSettingsOpen, setCalendarSettingsOpen] = useState(false);
 
   const loadProfiles = useCallback(async () => {
     try {
@@ -219,6 +224,7 @@ export function AgentSettings({
   if (!open) return null;
 
   return (
+    <>
     <Modal title={t("settings.title")} onClose={onClose}>
       {loading ? (
         <div className="spinner">{t("common.loading")}</div>
@@ -456,6 +462,20 @@ export function AgentSettings({
             ) : null}
           </div>
 
+          {/* --- External Calendars --- */}
+          <div className="field" style={{ marginTop: 20 }}>
+            <label style={{ fontWeight: 600 }}>{t("settings.calendars")}</label>
+            <button
+              type="button"
+              className="btn"
+              style={{ width: "100%", marginTop: 8 }}
+              onClick={() => setCalendarSettingsOpen(true)}
+            >
+              <Plus size={16} style={{ marginRight: 6 }} />
+              {t("settings.calendarConnect")}
+            </button>
+          </div>
+
           {/* --- Locale --- */}
           <div className="field" style={{ marginTop: 20 }}>
             <label>{t("settings.language")}</label>
@@ -535,5 +555,11 @@ export function AgentSettings({
         </div>
       )}
     </Modal>
+
+      <CalendarSettings
+        open={calendarSettingsOpen}
+        onClose={() => setCalendarSettingsOpen(false)}
+      />
+    </>
   );
 }

@@ -1265,3 +1265,113 @@ label {
   flex-direction: column;
   gap: 4px;
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ── Week Grid (drag-n-drop) ── */
+.week-grid {
+  display: grid;
+  grid-template-columns: 48px repeat(7, 1fr);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  user-select: none;
+  margin-top: 8px;
+}
+.week-grid .wg-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.week-grid .wg-header.today {
+  color: var(--accent);
+}
+.week-grid .wg-time {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: right;
+  padding: 0 4px;
+  transform: translateY(-6px);
+  height: 0;
+}
+.week-grid .wg-cell {
+  min-height: 48px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  position: relative;
+  background: var(--bg);
+}
+.week-grid .wg-cell:last-child {
+  border-right: none;
+}
+.week-grid .wg-cell:hover {
+  background: var(--hover-bg);
+}
+.week-grid .wg-cell.today-cell {
+  background: color-mix(in srgb, var(--accent) 4%, var(--bg));
+}
+.week-grid .wg-event-block {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  z-index: 10;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: grab;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.15);
+  transition: box-shadow 0.15s;
+  min-height: 20px;
+}
+.week-grid .wg-event-block:active {
+  cursor: grabbing;
+}
+.week-grid .wg-event-block.dragging {
+  opacity: 0.6;
+  z-index: 20;
+}
+.week-grid .wg-event-block .wg-eb-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.week-grid .wg-event-block .wg-eb-time {
+  opacity: 0.8;
+  font-size: 10px;
+}
+.week-grid .wg-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+}
+.week-grid .wg-resize-handle:hover {
+  background: rgba(255,255,255,0.2);
+}
+.week-grid .wg-drop-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  z-index: 5;
+  pointer-events: none;
+}
