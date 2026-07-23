@@ -82,6 +82,17 @@
     "profileInvalid": "{count}개의 잘못된 프로필 — 저장 시 제거됩니다",
     "errorLoad": "노트를 불러올 수 없습니다"
   },
+  "templates": {
+    "title": "템플릿",
+    "fromTemplate": "템플릿에서",
+    "selectTemplate": "템플릿 선택",
+    "saveAs": "템플릿으로 저장",
+    "saved": "템플릿이 저장되었습니다",
+    "deleteConfirm": "템플릿을 삭제하시겠습니까?",
+    "namePlaceholder": "템플릿 이름",
+    "emptyTitle": "템플릿 없음",
+    "emptyHint": "템플릿을 사용하면 미리 준비된 구조로 빠르게 노트를 만들 수 있습니다."
+  },
   "kanban": {
     "title": "칸반",
     "new": "새 작업",
@@ -212,7 +223,9 @@
     "tasks": "작업 ({count})",
     "meetings": "회의 ({count})",
     "files": "파일 ({count})",
-    "download": "다운로드"
+    "download": "다운로드",
+    "recent": "최근 검색",
+    "clearFilters": "필터 지우기"
   },
   "inbox": {
     "title": "에이전트 받은 편지함",
@@ -301,7 +314,10 @@
     "calendarUrlField": "ICS URL",
     "calendarToggleEnabled": "동기화 활성화",
     "calendarBack": "뒤로",
-    "calendarProviderDesc": "ICS 피드 URL"
+    "calendarProviderDesc": "ICS 피드 URL",
+    "exportTitle": "데이터 내보내기",
+    "exportButton": "ZIP 아카이브 다운로드",
+    "exportHint": "노트 (.md), 작업 및 프로젝트 (JSON), 캘린더 (.ics), 파일"
   },
   "priorities": {
     "title": "우선순위",

@@ -55,6 +55,16 @@ export interface ImportResult {
   errors?: string[];
 }
 
+export interface Template {
+  id: string;
+  name: string;
+  type: string;
+  body: string;
+  default_tags: string[];
+  default_profile_ids: string[];
+  created_at: string;
+}
+
 export interface Note {
   id: string;
   title: string;

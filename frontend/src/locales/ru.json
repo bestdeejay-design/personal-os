@@ -82,6 +82,17 @@
     "profileInvalid": "{count} неверных профиля(ей) — будут удалены при сохранении",
     "errorLoad": "Не удалось загрузить заметки"
   },
+  "templates": {
+    "title": "Шаблоны",
+    "fromTemplate": "Из шаблона",
+    "selectTemplate": "Выберите шаблон",
+    "saveAs": "Сохранить как шаблон",
+    "saved": "Шаблон сохранён",
+    "deleteConfirm": "Удалить шаблон?",
+    "namePlaceholder": "Название шаблона",
+    "emptyTitle": "Нет шаблонов",
+    "emptyHint": "Шаблоны помогают быстро создавать заметки с готовой структурой."
+  },
   "kanban": {
     "title": "Канбан",
     "new": "Создать задачу",
@@ -212,7 +223,9 @@
     "tasks": "Задачи ({count})",
     "meetings": "Встречи ({count})",
     "files": "Файлы ({count})",
-    "download": "Скачать"
+    "download": "Скачать",
+    "recent": "Недавние запросы",
+    "clearFilters": "Сбросить фильтры"
   },
   "inbox": {
     "title": "Входящие агента",
@@ -301,7 +314,10 @@
     "calendarUrlField": "ICS URL",
     "calendarToggleEnabled": "Синхронизация включена",
     "calendarBack": "Назад",
-    "calendarProviderDesc": "ICS ссылка"
+    "calendarProviderDesc": "ICS ссылка",
+    "exportTitle": "Экспорт данных",
+    "exportButton": "Скачать ZIP-архив",
+    "exportHint": "Заметки (.md), задачи и проекты (JSON), календарь (.ics), файлы"
   },
   "priorities": {
     "title": "Приоритеты",

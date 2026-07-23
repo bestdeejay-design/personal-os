@@ -273,6 +273,24 @@ export interface ExternalCalendarInput {
   sync_enabled?: boolean;
 }
 
+export interface TemplateRow {
+  id: string;
+  name: string;
+  type: string;
+  body: string;
+  default_tags: string[];
+  default_profile_ids: string[];
+  created_at: Date;
+}
+
+export interface TemplateInput {
+  name?: string;
+  type?: string;
+  body?: string;
+  default_tags?: string[];
+  default_profile_ids?: string[];
+}
+
 export interface ExternalEventInput {
   calendar_id?: string;
   external_id?: string;

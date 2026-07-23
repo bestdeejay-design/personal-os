@@ -1,4 +1,4 @@
-# Personal OS v0.0.14
+# Personal OS v0.0.15
 
 > [Read in Russian](./README.ru.md)
 
@@ -77,6 +77,7 @@ Desktop:     Tauri v2 (Rust)
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 0.0.15 | Jul 2026 | Note/task templates, smart search, ZIP export |
 | 0.0.14 | Jul 2026 | Kanban tags, WeekGrid drag-n-drop, recurring tasks auto-creation |
 | 0.0.13 | Jul 2026 | Note card redesign, file delete, mojibake fix, CHANGELOG |
 | 0.0.12 | Jul 2026 | Full i18n, profile management, settings, file search |

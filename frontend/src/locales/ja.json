@@ -82,6 +82,17 @@
     "profileInvalid": "{count} 個の無効なプロフィール — 保存時に削除されます",
     "errorLoad": "ノートの読み込みに失敗しました"
   },
+  "templates": {
+    "title": "テンプレート",
+    "fromTemplate": "テンプレートから",
+    "selectTemplate": "テンプレートを選択",
+    "saveAs": "テンプレートとして保存",
+    "saved": "テンプレートを保存しました",
+    "deleteConfirm": "テンプレートを削除しますか？",
+    "namePlaceholder": "テンプレート名",
+    "emptyTitle": "テンプレートがありません",
+    "emptyHint": "テンプレートを使用すると、既成の構造で素早くノートを作成できます。"
+  },
   "kanban": {
     "title": "カンバン",
     "new": "新規タスク",
@@ -212,7 +223,9 @@
     "tasks": "タスク ({count})",
     "meetings": "会議 ({count})",
     "files": "ファイル ({count})",
-    "download": "ダウンロード"
+    "download": "ダウンロード",
+    "recent": "最近の検索",
+    "clearFilters": "フィルターをクリア"
   },
   "inbox": {
     "title": "エージェント受信トレイ",
@@ -301,7 +314,10 @@
     "calendarUrlField": "ICS URL",
     "calendarToggleEnabled": "同期有効",
     "calendarBack": "戻る",
-    "calendarProviderDesc": "ICSフィードURL"
+    "calendarProviderDesc": "ICSフィードURL",
+    "exportTitle": "データエクスポート",
+    "exportButton": "ZIPアーカイブをダウンロード",
+    "exportHint": "ノート (.md)、タスクとプロジェクト (JSON)、カレンダー (.ics)、ファイル"
   },
   "priorities": {
     "title": "優先度",

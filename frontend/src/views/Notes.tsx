@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo } from "react";
-import type { Note, Profile, Project } from "../types";
-import { createNote, deleteNote, getNotes, getProjects, reorderNotes, updateNote } from "../api";
+import type { Note, Profile, Project, Template } from "../types";
+import { createNote, deleteNote, getNotes, getProjects, reorderNotes, updateNote, getTemplates } from "../api";
 import { useData } from "../useData";
 import { useProfiles } from "../ProfilesContext";
 import { useLocale } from "../locales";
@@ -35,6 +35,7 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
   const [q, setQ] = useState("");
   const [form, setForm] = useState<NoteFormState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const { profiles, nameOf } = useProfiles();
   const validProfileIds = useMemo(() => new Set(profiles.map((p) => p.id)), [profiles]);
 
@@ -51,7 +52,24 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
   const projectsState = useData<Project[]>(() => getProjects(), []);
   const projects = projectsState.data ?? [];
 
+  const templatesState = useData<Template[]>(() => getTemplates(), []);
+  const templates = templatesState.data ?? [];
+
   const openCreate = (): void => setForm({ ...EMPTY_FORM });
+  const applyTemplate = (tmpl: Template): void => {
+    const today = new Date();
+    const dateStr = today.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+    setForm({
+      id: undefined,
+      title: tmpl.body.includes("{date}") ? tmpl.name + ": " + dateStr : "",
+      body_md: tmpl.body.replace(/\{date\}/g, dateStr),
+      profile_ids: tmpl.default_profile_ids ?? [],
+      tags: (tmpl.default_tags ?? []).join(", "),
+      linked_project_id: "",
+      _invalidCount: 0,
+    });
+    setShowTemplatePicker(false);
+  };
   const openEdit = (note: Note): void =>
     setForm({
       id: note.id,
@@ -251,6 +269,9 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
           <button type="button" className="btn" onClick={openCreate}>
             + {t("notes.new")}
           </button>
+          <button type="button" className="btn ghost" onClick={() => setShowTemplatePicker(true)}>
+            {t("templates.fromTemplate")}
+          </button>
         </div>
       </div>
 
@@ -295,6 +316,35 @@ export function Notes({ activeProfiles }: { activeProfiles: string[] }): JSX.Ele
           onSave={submit}
           onDelete={form.id ? remove : undefined}
         />
+      ) : null}
+
+      {showTemplatePicker ? (
+        <Modal title={t("templates.selectTemplate")} onClose={() => setShowTemplatePicker(false)}>
+          {templates.length === 0 ? (
+            <EmptyState icon={<FileText size={32} />} title={t("templates.emptyTitle")} hint={t("templates.emptyHint")} />
+          ) : (
+            <div className="column" style={{ gap: 8 }}>
+              {templates.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  className="card"
+                  style={{ textAlign: "left", padding: "12px 16px", cursor: "pointer", border: "1px solid var(--border)", borderRadius: 8 }}
+                  onClick={() => applyTemplate(tmpl)}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{tmpl.name}</div>
+                  {tmpl.default_tags.length > 0 ? (
+                    <div className="row" style={{ gap: 4, flexWrap: "wrap" }}>
+                      {tmpl.default_tags.map((tag) => (
+                        <span key={tag} className="badge" style={{ background: "var(--accent)", color: "var(--bg)", fontSize: 11 }}>{tag}</span>
+                      ))}
+                    </div>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          )}
+        </Modal>
       ) : null}
     </div>
   );

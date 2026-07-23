@@ -16,6 +16,7 @@ import type {
   Setting,
   Task,
   TaskStatus,
+  Template,
   TimelineItem,
   TodayDigest,
   WeekDigest,
@@ -319,11 +320,11 @@ export function getWeek(profile?: string[]): Promise<WeekDigest> {
 }
 
 // ---- Search ----
-export function search(q: string): Promise<SearchResults> {
+export function search(q: string, filters?: Record<string, unknown>): Promise<SearchResults> {
   return request<SearchResults>("/api/search", {
     method: "POST",
     headers: JSON_HEADERS,
-    body: JSON.stringify({ q }),
+    body: JSON.stringify({ q, filters }),
   });
 }
 
@@ -417,6 +418,35 @@ export function triggerSpeak(text: string): Promise<{ ok: boolean }> {
     headers: JSON_HEADERS,
     body: JSON.stringify({ text }),
   });
+}
+
+// ---- Templates ----
+export function getTemplates(): Promise<Template[]> {
+  return request<Template[]>("/api/templates");
+}
+
+export function createTemplate(input: {
+  name: string;
+  type?: string;
+  body?: string;
+  default_tags?: string[];
+  default_profile_ids?: string[];
+}): Promise<Template> {
+  return request<Template>("/api/templates", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteTemplate(id: string): Promise<void> {
+  return request<void>(`/api/templates/${id}`, { method: "DELETE" });
+}
+
+// ---- Export ----
+export function exportAll(): string {
+  // Direct download via browser navigation — triggers backend ZIP stream
+  return `/api/export`;
 }
 
 // ---- External Calendars ----

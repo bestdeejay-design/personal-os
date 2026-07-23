@@ -239,6 +239,16 @@ CREATE TABLE IF NOT EXISTS external_events (
   synced_at timestamptz DEFAULT now(),
   UNIQUE (calendar_id, external_id)
 );
+
+CREATE TABLE IF NOT EXISTS templates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  type text NOT NULL DEFAULT 'note',
+  body text DEFAULT '',
+  default_tags jsonb DEFAULT '[]'::jsonb,
+  default_profile_ids jsonb DEFAULT '[]'::jsonb,
+  created_at timestamptz DEFAULT now()
+);
 `;
 
 const DEFAULT_PROFILES: ReadonlyArray<readonly [string, string, boolean]> = [
@@ -275,6 +285,147 @@ async function ensureAgentSettings(client: pg.PoolClient): Promise<void> {
       [key, jb(value)]
     );
   }
+}
+
+const BUILTIN_TEMPLATES: Array<{
+  name: string;
+  type: string;
+  body: string;
+  default_tags: string[];
+  default_profile_ids: string[];
+}> = [
+  {
+    name: "Встреча",
+    type: "note",
+    body: `## Участники
+
+- 
+
+## Обсудили
+
+- 
+
+## Решили
+
+- `,
+    default_tags: ["meeting"],
+    default_profile_ids: [],
+  },
+  {
+    name: "Задача",
+    type: "note",
+    body: `## Описание
+
+
+
+## Чек-лист
+
+- [ ] `,
+    default_tags: ["task"],
+    default_profile_ids: [],
+  },
+  {
+    name: "Идея",
+    type: "note",
+    body: `## Идея
+
+
+
+## Почему это важно
+
+
+
+## Следующие шаги
+
+- `,
+    default_tags: ["idea"],
+    default_profile_ids: [],
+  },
+  {
+    name: "Дневник",
+    type: "note",
+    body: `## Что сделано
+
+- 
+
+## Мысли
+
+
+
+## Планы
+
+- `,
+    default_tags: ["journal"],
+    default_profile_ids: [],
+  },
+  {
+    name: "Баг",
+    type: "task",
+    body: `## Шаги воспроизведения
+
+1. 
+2. 
+
+## Ожидаемое поведение
+
+
+
+## Фактическое поведение
+
+
+
+## Окружение
+
+- `,
+    default_tags: ["bug"],
+    default_profile_ids: [],
+  },
+  {
+    name: "Задача на неделю",
+    type: "task",
+    body: `## Цель
+
+
+
+## Критерии готовности
+
+- [ ] `,
+    default_tags: ["weekly"],
+    default_profile_ids: [],
+  },
+  {
+    name: "Ревью кода",
+    type: "task",
+    body: `## Что ревьювим
+
+- 
+
+## Замечания
+
+- 
+
+## Результат
+
+- [ ] Одобрено
+- [ ] Требует изменений`,
+    default_tags: ["review"],
+    default_profile_ids: [],
+  },
+];
+
+async function seedTemplates(client: pg.PoolClient): Promise<void> {
+  const { rows } = await client.query<{ c: number }>(
+    "SELECT COUNT(*)::int AS c FROM templates"
+  );
+  if (rows[0]?.c > 0) return;
+  for (const tmpl of BUILTIN_TEMPLATES) {
+    await client.query(
+      `INSERT INTO templates (id, name, type, body, default_tags, default_profile_ids)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)`,
+      [randomUUID(), tmpl.name, tmpl.type, tmpl.body, jb(tmpl.default_tags), jb(tmpl.default_profile_ids)]
+    );
+  }
+  console.log("[db] seeded built-in templates");
 }
 
 /**
@@ -357,6 +508,7 @@ export async function migrate(): Promise<void> {
       );
       await seedProfiles(client);
       await ensureAgentSettings(client);
+      await seedTemplates(client);
       dbReady = true;
       console.log("[db] migrations applied, database ready");
       return;

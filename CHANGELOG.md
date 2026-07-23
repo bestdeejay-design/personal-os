@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.15 (2026-07-23)
+- B4 Export: ZIP-архив всех данных (notes → .md, tasks/projects → JSON, calendar → .ics) через `/api/export`, кнопка экспорта в AgentSettings
+- Templates: система шаблонов заметок и задач — CRUD API, 7 встроенных шаблонов (Встреча, Задача, Идея, Дневник, Баг, Ежедневная заметка, Еженедельный обзор), пикер шаблонов в Notes и Kanban
+- Search: фильтры запросов (`type:`, `tag:`, `project:`, `profile:`), подсветка совпадений в результатах, история последних запросов (localStorage), модальный UX
+- Kanban: кнопка "From template" для создания задач из шаблона
+- Notes: пикер шаблонов при создании заметки
+- Locale: новые ключи для templates и export во всех 5 языках (en/ru/ja/ko/zh)
+- Types: интерфейс Template, обновлён signal API поиска
+
 ## 0.0.13 (2026-07-22)
 - NoteItem: кнопки Edit/Delete из шапки → Edit внизу справа, Delete в модалке
 - NoteItem: превью — закрытие только по ✕, полный текст со скроллом

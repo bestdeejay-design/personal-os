@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sun, Moon, Download, Upload, Plus, Edit3, Trash2, Check, X } from "lucide-react";
 import {
-  getSettings, saveSetting, getProfiles, createProfile, updateProfile, deleteProfile,
+  getSettings, saveSetting, getProfiles, createProfile, updateProfile, deleteProfile, exportAll,
 } from "../api";
 import { Modal } from "./Modal";
 import { CalendarSettings } from "./CalendarSettings";
@@ -547,6 +547,22 @@ export function AgentSettings({
               </button>
             ) : null}
           </div>
+
+          <div className="field" style={{ marginTop: 20 }}>
+            <label>{t("settings.exportTitle")}</label>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => window.open(exportAll(), "_blank")}
+            >
+              <Download size={16} style={{ marginRight: 6 }} />
+              {t("settings.exportButton")}
+            </button>
+            <span className="muted" style={{ fontSize: 11, display: "block", marginTop: 4 }}>
+              {t("settings.exportHint")}
+            </span>
+          </div>
+
           {savedKey ? (
             <span className="muted" style={{ fontSize: 12 }}>
               {t("settings.saved")}

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import type { Priority, Profile, Project, Recurrence, Task, TaskStatus } from "../types";
-import { createTask, getProjects, getTasks, updateTask } from "../api";
+import type { Priority, Profile, Project, Recurrence, Task, TaskStatus, Template } from "../types";
+import { createTask, getProjects, getTasks, getTemplates, updateTask } from "../api";
 import { useData } from "../useData";
 import { useProfiles } from "../ProfilesContext";
 import { ProfileChips } from "../components/ProfileChips";
@@ -8,7 +8,7 @@ import { TaskCard } from "../components/TaskCard";
 import { Modal } from "../components/Modal";
 import { EmptyState } from "../components/EmptyState";
 import { PriorityBadge } from "../components/PriorityBadge";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, FileText } from "lucide-react";
 import { useLocale } from "../locales";
 
 type RecurrenceRule = Exclude<Recurrence, null>;
@@ -79,6 +79,7 @@ export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.El
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const [form, setForm] = useState<TaskFormState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const { profiles } = useProfiles();
   const validProfileIds = useMemo(() => new Set(profiles.map((p) => p.id)), [profiles]);
   const ghostRef = useRef<HTMLElement | null>(null);
@@ -98,6 +99,8 @@ export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.El
     [activeProfiles.join(",")],
   );
   const projectsState = useData<Project[]>(() => getProjects(), []);
+  const templatesState = useData<Template[]>(() => getTemplates(), []);
+  const templates = templatesState.data ?? [];
 
   const tasks = data ?? [];
 
@@ -175,6 +178,25 @@ export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.El
   };
 
   const openCreate = (): void => setForm({ ...EMPTY_FORM });
+  const applyTemplate = (tmpl: Template): void => {
+    const today = new Date();
+    const dateStr = today.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+    setForm({
+      id: undefined,
+      title: tmpl.body.includes("{date}") ? tmpl.name + ": " + dateStr : "",
+      desc_md: tmpl.body.replace(/\{date\}/g, dateStr),
+      priority: "medium",
+      weight: 1,
+      assignee: "",
+      due_date: "",
+      project_id: "",
+      profile_ids: tmpl.default_profile_ids ?? [],
+      tags: (tmpl.default_tags ?? []).join(", "),
+      recurrence: null,
+      _invalidCount: 0,
+    });
+    setShowTemplatePicker(false);
+  };
   const openEdit = (task: Task): void =>
     setForm({
       id: task.id,
@@ -227,9 +249,14 @@ export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.El
     <div>
       <div className="section-head">
         <h2>{t("kanban.title")}</h2>
-        <button type="button" className="btn" onClick={openCreate}>
-          + {t("kanban.new")}
-        </button>
+        <div className="row" style={{ gap: 8 }}>
+          <button type="button" className="btn ghost" onClick={() => setShowTemplatePicker(true)}>
+            {t("templates.fromTemplate")}
+          </button>
+          <button type="button" className="btn" onClick={openCreate}>
+            + {t("kanban.new")}
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -281,6 +308,35 @@ export function Kanban({ activeProfiles }: { activeProfiles: string[] }): JSX.El
           onCancel={() => setForm(null)}
           onSave={submit}
         />
+      ) : null}
+
+      {showTemplatePicker ? (
+        <Modal title={t("templates.selectTemplate")} onClose={() => setShowTemplatePicker(false)}>
+          {templates.length === 0 ? (
+            <EmptyState icon={<FileText size={32} />} title={t("templates.emptyTitle")} hint={t("templates.emptyHint")} />
+          ) : (
+            <div className="column" style={{ gap: 8 }}>
+              {templates.filter((tmpl) => tmpl.type === "task").map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  className="card"
+                  style={{ textAlign: "left", padding: "12px 16px", cursor: "pointer", border: "1px solid var(--border)", borderRadius: 8 }}
+                  onClick={() => applyTemplate(tmpl)}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{tmpl.name}</div>
+                  {tmpl.default_tags.length > 0 ? (
+                    <div className="row" style={{ gap: 4, flexWrap: "wrap" }}>
+                      {tmpl.default_tags.map((tag) => (
+                        <span key={tag} className="badge" style={{ background: "var(--accent)", color: "var(--bg)", fontSize: 11 }}>{tag}</span>
+                      ))}
+                    </div>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          )}
+        </Modal>
       ) : null}
     </div>
   );

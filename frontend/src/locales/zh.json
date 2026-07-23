@@ -82,6 +82,17 @@
     "profileInvalid": "{count} 个无效个人资料 — 保存时将被移除",
     "errorLoad": "无法加载笔记"
   },
+  "templates": {
+    "title": "模板",
+    "fromTemplate": "从模板创建",
+    "selectTemplate": "选择模板",
+    "saveAs": "保存为模板",
+    "saved": "模板已保存",
+    "deleteConfirm": "删除模板？",
+    "namePlaceholder": "模板名称",
+    "emptyTitle": "没有模板",
+    "emptyHint": "模板可以帮助您快速创建具有现成结构的笔记。"
+  },
   "kanban": {
     "title": "看板",
     "new": "新建任务",
@@ -212,7 +223,9 @@
     "tasks": "任务 ({count})",
     "meetings": "会议 ({count})",
     "files": "文件 ({count})",
-    "download": "下载"
+    "download": "下载",
+    "recent": "最近搜索",
+    "clearFilters": "清除筛选"
   },
   "inbox": {
     "title": "代理收件箱",
@@ -301,7 +314,10 @@
     "calendarUrlField": "ICS URL",
     "calendarToggleEnabled": "同步已启用",
     "calendarBack": "返回",
-    "calendarProviderDesc": "ICS 订阅 URL"
+    "calendarProviderDesc": "ICS 订阅 URL",
+    "exportTitle": "导出数据",
+    "exportButton": "下载 ZIP 压缩包",
+    "exportHint": "笔记 (.md)、任务和项目 (JSON)、日历 (.ics)、文件"
   },
   "priorities": {
     "title": "优先级",

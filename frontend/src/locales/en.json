@@ -75,6 +75,17 @@
     "errorLoad": "Could not load notes",
     "fieldCalendarEvent": "External calendar event"
   },
+  "templates": {
+    "title": "Templates",
+    "fromTemplate": "From template",
+    "selectTemplate": "Select a template",
+    "saveAs": "Save as template",
+    "saved": "Template saved",
+    "deleteConfirm": "Delete template?",
+    "namePlaceholder": "Template name",
+    "emptyTitle": "No templates",
+    "emptyHint": "Templates help you quickly create notes with a ready-made structure."
+  },
   "kanban": {
     "title": "Kanban",
     "new": "New task",
@@ -205,7 +216,9 @@
     "tasks": "Tasks ({count})",
     "meetings": "Meetings ({count})",
     "files": "Files ({count})",
-    "download": "Download"
+    "download": "Download",
+    "recent": "Recent searches",
+    "clearFilters": "Clear filters"
   },
   "inbox": {
     "title": "Agent Inbox",
@@ -294,7 +307,10 @@
     "calendarUrlField": "ICS URL",
     "calendarToggleEnabled": "Sync enabled",
     "calendarBack": "Back",
-    "calendarProviderDesc": "ICS feed URL"
+    "calendarProviderDesc": "ICS feed URL",
+    "exportTitle": "Export data",
+    "exportButton": "Download ZIP archive",
+    "exportHint": "Notes (.md), tasks and projects (JSON), calendar (.ics), files"
   },
   "priorities": {
     "title": "Priorities",
